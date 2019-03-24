@@ -1,0 +1,6 @@
+# swapfiles
+*.swp
+
+# directories
+data
+graphs
