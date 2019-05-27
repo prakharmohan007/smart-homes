@@ -631,14 +631,14 @@ if __name__ == '__main__':
     # with open("../data/image.log", 'w') as image_log:
     #     simplejson.dump(obj_data.img, image_log)
 
-    # obj_data = PrepareData(2)
-    # obj_data.prepare_csv("../data/experimental_data/Subject_2/corrected_data",
-    #                      "../data/experimental_data/Subject_2/processed_data")
+    obj_data = PrepareData(2)
+    obj_data.prepare_csv("../data/experimental_data/Subject_2/corrected_data",
+                         "../data/experimental_data/Subject_2/processed_data")
 
-    obj_data = DataPreparation(subject_id=2, num_days=5)
-    print("number of days:", len(obj_data.image))
-    print("number of intervals: ", len(obj_data.image[0]))
-    print("A feature sample: ", obj_data.image[0][1].stime, obj_data.image[0][1].duration)
+    # obj_data = DataPreparation(subject_id=2, num_days=5)
+    # print("number of days:", len(obj_data.image))
+    # print("number of intervals: ", len(obj_data.image[0]))
+    # print("A feature sample: ", obj_data.image[0][1].stime, obj_data.image[0][1].duration)
 
     # with open("../data/image.log", 'w') as image_log:
     #     simplejson.dump(obj_data.img, image_log)
