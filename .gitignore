@@ -1,0 +1,7 @@
+# swap files
+.sw*
+
+# folders
+data
+graphs
+.idea
