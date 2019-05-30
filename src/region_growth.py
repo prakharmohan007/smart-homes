@@ -14,6 +14,48 @@ class RegionGrowth:
         # vec_b = np.array(room_vec_b)
         return np.dot(room_vec_a, room_vec_b)
 
+    def similarity_room_type(self, a1, a2):
+        print(a1["type"], a2["type"])
+        if a1["type"] == a2["type"]:
+            return 1
+        else:
+            return 0
+
+    # distance measure (dist) dist:
+    # 1 -> euclidean distance (normalized times)
+    # 2 -> cosine similarity
+    def similarity_time_duration(self, a1, a2, dist=1):
+        distance = 0
+        a1_stime = a1["stime"]
+        a2_stime = a2["stime"]
+
+        a1_dur = a1["duration"]
+        a2_dur = a2["duration"]
+
+        if dist == 1:
+            secs = 24 * 60 * 60.0
+            a1_stime = a1_stime / secs
+            a2_stime = a2_stime / secs
+
+            a1_dur = a1_dur / secs
+            a2_dur = a2_dur / secs
+
+            distance = ((a1_stime - a2_stime) ** 2 + (a1_dur - a2_dur) ** 2)
+            distance = distance ** 1 / 2
+        else:
+            numerator = a1_stime * a2_stime + a1_dur * a2_dur
+            denominator = (a1_stime ** 2 + a2_stime ** 2) ** 1 / 2 * (a1_dur ** 2 + a2_dur ** 2) ** 1 / 2
+            distance = numerator / denominator
+        print(distance)
+        return distance
+
+    def similarity_time(self, a1, a2, ):
+        a1_stime = a1["stime"]
+        a2_stime = a2["stime"]
+        secs = 24 * 60 * 60.0
+        distance = abs(a1_stime - a2_stime) / secs
+        return distance
+
     # Cluster the activities within same day using the room id
     # return the dictionary of clusters where every key has a list
     # of pixel coordinates (row , column) in that cluster
@@ -69,6 +111,7 @@ class RegionGrowth:
                 # d += 1
                 obj_uf.union(a, b)
 
+        # cluster all the no-data points into 1 cluster
         for i in range(len(no_data_points) - 1):
             a = obj_uf.find(no_data_points[i])
             b = obj_uf.find(no_data_points[i + 1])
@@ -81,13 +124,13 @@ class RegionGrowth:
             no_data_label = obj_uf.find(no_data_points[0])
 
         # collect information for clusters
-        cluster_elements = {}
-        cluster_map = {}
-        cluster_id = 0
+        cluster_elements = {}  # final dictionary of clusters []
+        cluster_map = {}  # cluster ID. cid from union-find are not true ids
+        cluster_id = 1
 
         # store the pixels for each cluster. [row, col]
-        label = np.ones((rows, cols))
-        label = label*(-1)
+        label_img = np.zeros(shape=(rows, cols), dtype=int)
+        # label_img = label_img*(-1)
         for y in range(rows):
             for x in range(cols):
                 cid = obj_uf.find(y * cols + x)
@@ -97,58 +140,69 @@ class RegionGrowth:
                 # if the cluster has not been allotted an id, allot it
                 if cid not in cluster_map:
                     cluster_map[cid] = cluster_id
-                    cluster_id += 1
+                    cluster_id = cluster_id + 1
 
                 # If the cluster is not in the dictionary, initialize it as list
                 if cluster_map[cid] not in cluster_elements:
                     cluster_elements[cluster_map[cid]] = []
 
                 cluster_elements[cluster_map[cid]].append((y, x))
-                label[y, x] = cid
+                label_img[y, x] = cluster_map[cid]
 
-        return cluster_elements
+        return cluster_elements, label_img
 
-    def similarity_room_type(self, a1, a2):
-        print(a1["type"], a2["type"])
-        if a1["type"] == a2["type"]:
-            return 1
-        else:
-            return 0
+    def merge_short_activities(self, clusters, cluster_feat, label_img, thresh=20):
+        rows = len(label_img)
+        cols = len(label_img[0])
+        merge_ids = {}
+        new_clusters = {}
+        # new_label_img = np.ones((rows, cols))*(-1)
+        new_label_img = label_img.copy()
+        get_id = 0
+        for r in range(rows):
+            for c in range(cols-1):
+                if label_img[r, c] != label_img[r, c+1]:  # check for potential merging cluster
+                    c1 = label_img[r, c]
+                    c2 = label_img[r, c+1]
 
-    # distance measure (dist) dist:
-    # 1 -> euclidean distance (normalized times)
-    # 2 -> cosine similarity
-    def similarity_time_duration(self, a1, a2, dist=1):
-        distance = 0
-        a1_stime = a1["stime"]
-        a2_stime = a2["stime"]
+                    # print(c1, cluster_feat[c1].duration, "\t", c2, cluster_feat[c2].duration)
+                    # input()
+                    if cluster_feat[c1].duration <= thresh:
+                        # is both c1 and c2 are small or if c2 is large and c1 follows B-s-B
+                        if cluster_feat[c2].duration <= thresh or c1 not in merge_ids:
+                            # merge c1 and c2
+                            if c1 in merge_ids:
+                                merge_ids[c2] = merge_ids[c1]
+                            else:
+                                get_id = get_id + 1
+                                merge_ids[c1] = get_id
+                                merge_ids[c2] = get_id
+                        else:  # cluster_feat[c2].duration > thresh and c1 is already added
+                            get_id = get_id + 1
+                            merge_ids[c2] = get_id
+                    else:  # cluster_feat[c1].duration > thresh:
+                        # add c1 as an individual cluster
+                        if c1 not in merge_ids:
+                            get_id = get_id+1
+                            merge_ids[c1] = get_id
 
-        a1_dur = a1["duration"]
-        a2_dur = a2["duration"]
+                elif c == cols-2:
+                    # if the cluster is not added anywhere, add it
+                    if label_img[r, c] not in merge_ids:
+                        get_id = get_id + 1
+                        merge_ids[label_img[r, c]] = get_id
 
-        if dist == 1:
-            secs = 24 * 60 * 60.0
-            a1_stime = a1_stime / secs
-            a2_stime = a2_stime / secs
+        for key in merge_ids:
+            new_label_img[new_label_img == key] = merge_ids[key]
 
-            a1_dur = a1_dur / secs
-            a2_dur = a2_dur / secs
+        for y in range(rows):
+            for x in range(cols):
+                cid = new_label_img[y, x]
+                if cid not in new_clusters:
+                    new_clusters[cid] = []
+                new_clusters[cid].append((y, x))
 
-            distance = ((a1_stime - a2_stime) ** 2 + (a1_dur - a2_dur) ** 2)
-            distance = distance ** 1 / 2
-        else:
-            numerator = a1_stime * a2_stime + a1_dur * a2_dur
-            denominator = (a1_stime ** 2 + a2_stime ** 2) ** 1 / 2 * (a1_dur ** 2 + a2_dur ** 2) ** 1 / 2
-            distance = numerator / denominator
-        print(distance)
-        return distance
-
-    def similarity_time(self, a1, a2, ):
-        a1_stime = a1["stime"]
-        a2_stime = a2["stime"]
-        secs = 24 * 60 * 60.0
-        distance = abs(a1_stime - a2_stime) / secs
-        return distance
+        return new_clusters, new_label_img
 
     def second_pass(self, clusters, cluster_feat):
         num_clusters = len(clusters)
@@ -261,8 +315,8 @@ class RegionGrowth:
         num_edges = 0
         # prepare edges within clusters
         print("[RegionGrowth] cluster_by_time_hist: preparing edges....")
-        for i in range(num_clusters - 1):
-            for j in range(i + 1, num_clusters):
+        for i in range(1, num_clusters):
+            for j in range(i + 1, num_clusters+1):
                 temp_edge = self.edge.copy()
                 temp_edge['a'] = i
                 temp_edge['b'] = j

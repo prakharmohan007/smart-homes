@@ -9,7 +9,7 @@ from data_processing import TempDataProcessing, ClusterProcessing, DataPreparati
 from region_growth import RegionGrowth
 from data_visualization import DataVisualization as dv
 
-SAVE_IMAGE = 1
+SAVE_IMAGE = 0
 SHOW_IMAGE = 1
 
 VISUALIZE = 0
@@ -54,10 +54,10 @@ def plot_cluster(clusters, dims):
         colors.append(c)
     shuffle(colors)
 
-    for i in range(num_clusters):
+    for i in clusters:
         for point in clusters[i]:
             r, c = point
-            image[r * 50:(r + 1) * 50, c] = colors[i]
+            image[r * 50:(r + 1) * 50, c] = colors[i-1]
             label[r * 50:(r + 1) * 50, c] = i
 
     return image, label
@@ -74,7 +74,10 @@ if __name__ == "__main__":
     print("prepare data")
     # obj_data = TempDataProcessing("../data/180724_180810_mod.csv")
     # obj_data = TempDataProcessing("../data/toy_example.csv")
-    obj_data = DataPreparation(subject_id=2, dir_name="../data/experimental_data/Subject_2/processed_data", num_days=15)
+    obj_data = DataPreparation(subject_id=2,
+                               num_days=15,
+                               dir_name="../data/experimental_data/Subject_2/processed_data")
+                               # file_name="xandem_2018-12-02.log")
     # print("number of days:", len(obj_data.image))
     # print("number of intervals: ", len(obj_data.image[0]))
     # data_dims = (len(obj_data.image), len(obj_data.image[0]), 3)
@@ -92,7 +95,7 @@ if __name__ == "__main__":
     print("********************************************************************************")
     print("performing first pass.....")
     obj_rg = RegionGrowth()
-    first_pass_clusters = obj_rg.first_pass(data)
+    first_pass_clusters, label_fp = obj_rg.first_pass(data)
     print("number of clusters: ", len(first_pass_clusters))
     # print(first_pass_clusters[1])
     # with open("../data/image.log", 'w') as image_log:
@@ -101,9 +104,10 @@ if __name__ == "__main__":
     #     simplejson.dump(first_pass_clusters, image_log)
 
     print("preparing visual results for first pass.....")
-    img_fp, label_fp = plot_cluster(first_pass_clusters, data_dims)
+    img_fp, label = plot_cluster(first_pass_clusters, data_dims)
 
     if SHOW_IMAGE:
+        cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
         cv2.imshow("First Pass Clusters", img_fp)
         # cv2.waitKey(0)
 
@@ -114,13 +118,36 @@ if __name__ == "__main__":
         obj_dv = dv(img_fp, label_fp)
         obj_dv.feature_comparison()
 
+    print("preparing features of first pass clusters")
+    obj_fp_data = ClusterProcessing(interval=scale)
+    # cluster_feat_fp = obj_sp_data.get_cluster_histograms(data, first_pass_clusters)
+    cluster_feat_fp = obj_fp_data.get_cluster_features(data, first_pass_clusters)
+    print(cluster_feat_fp.keys())
+
+    print("********************************************************************************")
+    print("merging extra short activities")
+    clusters_sm, label_sm = obj_rg.merge_short_activities(first_pass_clusters, cluster_feat_fp, label_fp, 60)
+    print("number of clusters: ", len(clusters_sm))
+    print("preparing visual results for first pass.....")
+    img_sm, label = plot_cluster(clusters_sm, data_dims)
+
+    if SHOW_IMAGE:
+        cv2.namedWindow("short activities merged", cv2.WINDOW_NORMAL)
+        cv2.imshow("short activities merged", img_sm)
+        cv2.waitKey(0)
+
+    if SAVE_IMAGE:
+        cv2.imwrite("../graphs/short_clusters_merged_" + str(scale) + ".jpg", img_sm)
+
+    print("preparing features of Short-activity merged clusters")
+    obj_sm_data = ClusterProcessing(interval=scale)
+    # cluster_feat_fp = obj_sp_data.get_cluster_histograms(data, first_pass_clusters)
+    cluster_feat_sm = obj_sm_data.get_cluster_features(data, first_pass_clusters)
+    print(cluster_feat_sm.keys())
+
     print("********************************************************************************")
     print("performing second pass.....")
-    obj_sp_data = ClusterProcessing(interval=60)
-    cluster_feat_sp = obj_sp_data.get_cluster_histograms(data, first_pass_clusters)
-    # print(cluster_feat_sp)
-
-    second_pass_clusters = obj_rg.cluster_by_time_hist(first_pass_clusters, cluster_feat_sp, thresh)
+    second_pass_clusters = obj_rg.cluster_by_time_hist(first_pass_clusters, cluster_feat_fp, thresh)
     print("number of clusters: ", len(second_pass_clusters))
     print("preparing visual results for second pass.....")
     img_sp, label_sp = plot_cluster(second_pass_clusters, data_dims)

@@ -246,10 +246,12 @@ class PrepareData:
 # used InitFeature class
 class DataPreparation:
     def __init__(self, subject_id=2,
-                 dir_name="../data/experimental_data/Subject_2/processed_data",
                  num_days=30,
+                 dir_name="../data/experimental_data/Subject_2/processed_data",
+                 file_name=None,
                  time_interval=5):
         self.dir_name = dir_name
+        self.file_name = file_name
         # self.unprocessed_data_dict, self.unprocessed_data_list = self.loadCSV()
         self.num_days = num_days
         self.time_interval = time_interval
@@ -278,7 +280,11 @@ class DataPreparation:
         cols = int(24 * 60 * 60 / self.time_interval)
         img = []
         print("[DataPreparation] read_files: reading log files of data")
-        log_files = glob.glob(self.dir_name + "/*.log")
+        if self.file_name is None:
+            log_files = glob.glob(self.dir_name + "/*.log")
+        else:
+            log_files = [self.dir_name + "/" + self.file_name]
+
         if len(log_files) == 0:
             print("[DataPreparation] read_files: Error - No log files found in the folder ", self.dir_name)
             exit(-1)
@@ -300,7 +306,7 @@ class DataPreparation:
                 # delete the first line (header line)
                 del data[0]
                 sample_num = -1
-                curr_info = None
+                curr_info = None   # curr_info: [space_id, stime, duration]
 
                 # iterate through all the files, each file is a record of a day
                 for line in data:
@@ -360,37 +366,47 @@ class ClusterProcessing:
     def get_cluster_features(self, data, clusters):
         self.num_clusters = len(clusters)
         cluster_feat = {}
-        for i in range(self.num_clusters):
+        for i in clusters:
             # features = self.init_feature_vec()
             features = InitFeatures(num_space=data[0][0].num_space,
                                     num_space_type=data[0][0].num_space_types,
                                     interval=self.interval)
-
+            xl = 24*60*60
+            xr = 0
+            row = 0
             for point in clusters[i]:
                 r, c = point
-
-                # vec_s = np.array(data[r][c]["space"])
-                # space = space + vec_s
-                features.space = features.space + data[r][c].space
-                features.space[features.space > 0] = 1
-
-                # features["stime"] += data[r][c]["stime"]
-                # features["duration"] += data[r][c]["duration"]
-                # features["type"] = data[r][c]["type"]
-                features.stime += data[r][c].stime
-                features.duration += data[r][c].duration
+                row = r
+                features.space = np.logical_or(features.space, np.array(data[r][c].space))
                 features.space_type.union(data[r][c].space_type)
+                if c < xl:
+                    xl = c
 
-            # features["space"] = list(space)
-            # features["stime"] = int(features["stime"] / len(clusters[i]))
-            # features["duration"] = int(features["duration"] / len(clusters[i]))
-            features.stime = int(features.stime / len(clusters[i]))
-            features.duration = int(features.duration / len(clusters[i]))
+                if c > xr:
+                    xr = c
+
+            features.stime = data[row][xl].stime
+            # features.duration = (xr - xl)*self.interval
+            if xr == len(data[0]) - 1:
+                features.duration = (xr - xl) * self.interval
+            else:
+                features.duration = data[row][xr+1].stime - features.stime
+
+            features.space_hist[0:(xr - xl)] = np.array([1] * (xr - xl))
+            features.time_hist[xl:xr] = np.array([1] * (xr - xl))
+            if len(features.space_type) > 1:
+                features.space_type = {'7'}
+
+            # r, c = clusters[i][0]
+            # features.space = data[r][c].space
+            # features.stime = data[r][c].stime
+            # features.duration = data[r][c].duration
+            # self.get_hist(features, data[r][c])
 
             cluster_feat[i] = features
             # print(features)
             # print(self.cluster_feat[i + 1])
-            return cluster_feat
+        return cluster_feat
 
     # space_id: Spaces where the person did some activity in the cluster
     # space_type: The type of space, toilet, room etc
