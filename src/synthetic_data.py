@@ -98,7 +98,7 @@ class SyntheticData:
 
         return packed_routine
 
-    def write_files(self, routine, level=1, file_num=1):
+    def write_files(self, routine, level=1, file_num=1, controlled=False, sdp=10):
         dir_path = self.base_dir + "level" + str(level)
         parsed_file_path = dir_path + "/parsed_data"
         raw_file_path = dir_path + "/raw_data"
@@ -127,7 +127,11 @@ class SyntheticData:
             print("[SyntheticData] write_files: Error with folder ", parsed_file_path, ", Error: ", err)
             raise
 
-        file_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_" + str(file_num) + ".csv"
+        if controlled:
+            file_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_sd" + str(sdp) + "_" + str(
+                file_num) + ".csv"
+        else:
+            file_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_" + str(file_num) + ".csv"
 
         f1 = open(raw_file_path + "/" + file_name, 'w')
         raw_writer = csv.writer(f1)
@@ -153,7 +157,7 @@ class SyntheticData:
         f1.close()
         f2.close()
 
-    def gen_level1(self, day, routine):
+    def gen_level1(self, day, routine, controlled=False, sdp=10):
         synt_routine = []
         prev_end_time = 24 * 60 * 60
         is_full = False
@@ -163,11 +167,15 @@ class SyntheticData:
             if start_sec != 0:
                 start_sec = prev_end_time + 1
 
-            # randomly select Standard Deviation
-            sd_idx = random.randint(0, 2)  # 0->10%, 1->20%, 2->30%
             duration = int(sample[2])
-            # calc standard deviation as a percent of duration
-            sd = int(duration * self.sd[sd_idx] / 100.0)
+            if controlled:
+                sd = int(duration * sdp / 100.0)
+            else:
+                # randomly select Standard Deviation
+                sd_idx = random.randint(0, 2)  # 0->10%, 1->20%, 2->30%
+                # calc standard deviation as a percent of duration
+                sd = int(duration * self.sd[sd_idx] / 100.0)
+
             rand_duration = int(random.gauss(duration, sd))
 
             # check if activity crosses 24 hrs
@@ -196,26 +204,34 @@ class SyntheticData:
 
         return synt_routine
 
-    def level_1(self, routine):
-        print("[SyntheticData] Level_1: Generating level1 data for ", self.num_files, "files, ", self.num_days,
-              " days in each file.")
+    def level_1(self, routine, controlled=False, sdp=10):
+        if controlled:
+            print("[SyntheticData] Level_1: Generating level2 data for ", self.num_files, "files, ", self.num_days,
+                  " days and controlled SD of " + str(sdp) + "% in each file.")
+        else:
+            print("[SyntheticData] Level_1: Generating level2 data for ", self.num_files, "files, ", self.num_days,
+                  " days in each file.")
 
         for f_num in range(1, self.num_files + 1):
             synt_routine = []
             for day in range(1, self.num_days + 1):
-                one_day_routine = self.gen_level1(day, routine)
+                one_day_routine = self.gen_level1(day, routine, controlled, sdp)
                 synt_routine = synt_routine + one_day_routine
-            self.write_files(routine=synt_routine, level=1, file_num=f_num)
+            self.write_files(routine=synt_routine, level=1, file_num=f_num, controlled=controlled, sdp=sdp)
 
     # level2 = level1 with randomly distributed toilet activity
-    def level_2(self, routine):
-        print("[SyntheticData] Level_2: Generating level2 data for ", self.num_files, "files, ", self.num_days,
-              " days in each file.")
+    def level_2(self, routine, controlled=False, sdp=10):
+        if controlled:
+            print("[SyntheticData] Level_2: Generating level2 data for ", self.num_files, "files, ", self.num_days,
+                  " days and controlled SD of " + str(sdp) + "% in each file.")
+        else:
+            print("[SyntheticData] Level_2: Generating level2 data for ", self.num_files, "files, ", self.num_days,
+                  " days in each file.")
 
         for f_num in range(1, self.num_files + 1):
             synt_routine = []
             for day in range(1, self.num_days + 1):
-                one_day_routine = self.gen_level1(day, routine)
+                one_day_routine = self.gen_level1(day, routine, controlled, sdp)
                 # print(one_day_routine)
 
                 # introduce noise
@@ -227,7 +243,7 @@ class SyntheticData:
 
                 # unpack one-day-routine to easy introduce the noise
                 unpacked = self.unpack_routine(one_day_routine, self.scale)
-                #print(unpacked)
+                # print(unpacked)
 
                 # ..for each instance
                 for i in range(num_act):
@@ -245,16 +261,16 @@ class SyntheticData:
                             # ..regen random time
                             continue
 
-                        end_cell = act_cell + int(rand_act_dur/self.scale)
+                        end_cell = act_cell + int(rand_act_dur / self.scale)
                         # print(act_cell, end_cell, rand_act_dur)
                         # ..can not overlap with personal hygiene or already introduced toilet
-                        overlap = list(itertools.chain.from_iterable(unpacked[act_cell:end_cell+1]))
+                        overlap = list(itertools.chain.from_iterable(unpacked[act_cell:end_cell + 1]))
                         if 'T' in overlap:
                             # ..regen random time
                             continue
                         else:
                             # ..else introduce the noise
-                            for row in unpacked[act_cell:end_cell+1]:
+                            for row in unpacked[act_cell:end_cell + 1]:
                                 row[2] = routine[-1][3]
                                 row[3] = routine[-1][4]
                                 success = True
@@ -264,12 +280,14 @@ class SyntheticData:
                 synt_routine = synt_routine + packed
                 # print(packed)
 
-            self.write_files(routine=synt_routine, level=2, file_num=f_num)
+            self.write_files(routine=synt_routine, level=2, file_num=f_num, controlled=controlled, sdp=sdp)
 
     # level: What levels are required. 1: Lvl1, 2:lvl2, 3:lvl3, 12:lvl1&2, 13:lvl1&3, 23:lvl2&3, 123:lvl1,2&3
     # num_days: number of days in each data file
     # num_files: number of files to be generated
-    def gen_synthetic_data(self, level=1, scale=30, num_days=30, num_files=5, base_dir="../data/synthetic_data/",
+    def gen_synthetic_data(self, level=1, scale=30, num_days=30,
+                           num_files=5, controlled=False, sdp=10,
+                           base_dir="../data/synthetic_data/",
                            file_name="synthetic_routine.csv"):
         self.scale = scale
         self.num_days = num_days
@@ -279,14 +297,16 @@ class SyntheticData:
         routine = self.read_general_routine(self.base_dir + file_name)
 
         if level == 1:
-            self.level_1(routine)
+            self.level_1(routine, controlled, sdp)
         elif level == 2:
-            self.level_2(routine)
+            self.level_2(routine, controlled, sdp)
         elif level == 12:
-            self.level_1(routine)
-            self.level_2(routine)
+            self.level_1(routine, controlled, sdp)
+            self.level_2(routine, controlled, sdp)
 
 
 if __name__ == "__main__":
     obj = SyntheticData()
-    obj.gen_synthetic_data(level=12, num_days=30, num_files=5)
+    sdp = [5, 10, 15, 20, 25, 30]
+    for sd in sdp:
+        obj.gen_synthetic_data(level=12, num_days=30, num_files=5, controlled=True, sdp=sd)

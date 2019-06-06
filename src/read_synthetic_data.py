@@ -95,7 +95,7 @@ class ReadSyntheticData:
             start_sec = self.get_sec_from_time(split_line[1])
             end_sec = start_sec + curr_dur
             while sec < end_sec:
-                curr_routine.append(split_line[-1])
+                curr_routine.append(split_line[-2])
                 sec = sec + self.scale
 
             if line == len(data) - 1:
@@ -103,6 +103,33 @@ class ReadSyntheticData:
 
             prev_day = curr_day
         return routine
+
+    def read_level(self, level=1, controlled=False, sdp=10):
+        file_dir = self.base_dir + "level" + str(level) + "/"
+        print("[ReadSyntheticData] read_level: Reading files of level" + str(level) + " synthetic data")
+        for f_no in range(1, self.num_files + 1):
+            if controlled:
+                file_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_sd" + str(sdp) + "_" + str(
+                    f_no) + ".csv"
+            else:
+                file_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_" + str(f_no) + ".csv"
+
+            # read parsed file
+            file_path = file_dir + "parsed_data/" + file_name
+            print("[ReadSyntheticData] read_level: File being read is ", file_path)
+            routine = self.read_parsed_file(file_path)
+            img = self.get_image(routine)
+
+            if IMG_SAVE:
+                if controlled:
+                    img_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_sd" + str(
+                        sdp) + "_" + str(f_no) + ".jpg"
+                else:
+                    img_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_" + str(f_no) + ".jpg"
+                image_path = self.base_dir + "image_routine/" + img_name
+                cv2.imwrite(image_path, img)
+                # cv2.imshow("image", img)
+                # cv2.waitKey(0)
 
     def read_level2(self):
         file_dir = self.base_dir + "level2/"
@@ -147,22 +174,25 @@ class ReadSyntheticData:
                 # cv2.waitKey(0)
 
     # level: What levels are required. 1: Lvl1, 2:lvl2, 3:lvl3, 12:lvl1&2, 13:lvl1&3, 23:lvl2&3, 123:lvl1,2&3
-    def read_synthetic_data(self, level=1, scale=30, num_days=30, num_files=5,
+    def read_synthetic_data(self, level=1, scale=30, num_days=30,
+                            num_files=5, controlled=False, sdp=10,
                             base_dir="../data/synthetic_data/"):
         self.scale = scale
         self.num_days = num_days
         self.num_files = num_files
         self.base_dir = base_dir
         if level == 1:
-            self.read_level1()
+            self.read_level(level=1, controlled=controlled, sdp=sdp)
         elif level == 2:
-            self.read_level2()
+            self.read_level(level=2, controlled=controlled, sdp=sdp)
         elif level == 12:
-            self.read_level1()
-            self.read_level2()
+            self.read_level(level=1, controlled=controlled, sdp=sdp)
+            self.read_level(level=2, controlled=controlled, sdp=sdp)
 
 
 if __name__ == '__main__':
     obj = ReadSyntheticData()
-    obj.read_synthetic_data(level=12, num_days=30)
+    sdp = [5, 10, 15, 20, 25, 30]
+    for sd in sdp:
+        obj.read_synthetic_data(level=12, num_days=30, controlled=True, sdp=sd)
     exit(1)
