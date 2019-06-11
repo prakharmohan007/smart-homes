@@ -35,7 +35,7 @@ class SyntheticData:
         # num_act = len(data) - 1  # last activity is toilet, to be introduced as noise in lvl2 and lvl3
         routine = []
         for sample in data:
-            split_sample = sample.splitlines()[0].split(sep=',')
+            split_sample = sample.splitlines()[0].split(sep=', ')
             routine.append(split_sample)
 
         return routine
