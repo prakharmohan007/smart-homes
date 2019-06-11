@@ -35,7 +35,7 @@ class SyntheticData:
         # num_act = len(data) - 1  # last activity is toilet, to be introduced as noise in lvl2 and lvl3
         routine = []
         for sample in data:
-            split_sample = sample.splitlines()[0].split(sep=',')
+            split_sample = sample.splitlines()[0].split(sep=', ')
             routine.append(split_sample)
 
         return routine
@@ -206,10 +206,10 @@ class SyntheticData:
 
     def level_1(self, routine, controlled=False, sdp=10):
         if controlled:
-            print("[SyntheticData] Level_1: Generating level2 data for ", self.num_files, "files, ", self.num_days,
+            print("[SyntheticData] Level_1: Generating level1 data for ", self.num_files, "files, ", self.num_days,
                   " days and controlled SD of " + str(sdp) + "% in each file.")
         else:
-            print("[SyntheticData] Level_1: Generating level2 data for ", self.num_files, "files, ", self.num_days,
+            print("[SyntheticData] Level_1: Generating level1 data for ", self.num_files, "files, ", self.num_days,
                   " days in each file.")
 
         for f_num in range(1, self.num_files + 1):
