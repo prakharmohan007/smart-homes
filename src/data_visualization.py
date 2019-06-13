@@ -35,12 +35,19 @@ class DataVisualization:
 
         factor = min(len1, len2)
 
-        print(inter)
+        # print(inter)
 
         if factor > 0:
             return inter / factor
         else:
             return 0
+
+    @staticmethod
+    def hist_euclidean_dist(hist1, hist2):
+        abs_diff = np.abs(hist1 - hist2)
+        sqrd_diff = abs_diff**2
+        euc_dist = np.sqrt(sqrd_diff.sum())
+        return euc_dist
 
     def display_features(self, event, x, y, flags, param):
 
@@ -67,6 +74,7 @@ class DataVisualization:
             time_norm_hist_int = self.hist_inter_normalized(cl["time_hist"], cr["time_hist"])
             dur_norm_hist_int = self.hist_inter_normalized(cl["dur_hist"], cr["dur_hist"])
             avg_stime_diff = abs(cl["stime"] - cr["stime"]) / (24*60*60)
+            prev_act_euc_dist = self.hist_euclidean_dist(cl["prev_act_avg"], cr["prev_act_avg"])
 
             textc = "Similarity between " + str(self.lc_id) + " and " + str(self.rc_id) + "\n" + \
                 "Number of act: Left(" + str(cl["num_clusters"]) + ")\t Right(" + str(cr["num_clusters"]) + ")\n" + \
@@ -75,7 +83,9 @@ class DataVisualization:
                 "Histogram Intersection / Union (Duration): " + str(dur_hist_iu) + "\n" + \
                 "Normalized Histogram Intersection (Time): " + str(time_norm_hist_int) + "\n" + \
                 "Normalized Histogram Intersection (Duration): " + str(dur_norm_hist_int) + "\n" + \
-                "Average Start time difference: " + str(avg_stime_diff)
+                "Average Start time difference: " + str(avg_stime_diff) + "\n" + \
+                "Previous Activity Avg:\n\t Left" + str(cl["prev_act_avg"]) + "\n\tRight" + str(cr["prev_act_avg"]) + "\n" + \
+                "Previous Activity Euclidean Distance: " + str(prev_act_euc_dist)
             self.ts.delete(0.0, tkinter.END)
             self.ts.insert('insert', textc + '\n')
             self.ts.update()

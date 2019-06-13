@@ -99,8 +99,8 @@ class Features:
         features["time_hist"] = np.zeros(self.time_bins, dtype=int)
         features["duration"] = 0
         features["dur_hist"] = np.zeros(self.time_bins, dtype=int)
-        features["prev_act_bag"] = np.zeros(self.act_bins, dtype=int)
-        features["prev_act_avg"] = np.zeros(self.act_bins, dtype=float)
+        features["prev_act_bag"] = None
+        features["prev_act_avg"] = None
         return features
 
     def init_features(self, loc, loc_type, stime, duration, prev_act):
@@ -118,7 +118,12 @@ class Features:
         features["dur_hist"][0:int(duration / self.scale)] = 1
 
         if prev_act is not None:
-            features["prev_act_bag"] = prev_act
+            features["prev_act_bag"] = prev_act.copy()
+        else:
+            features["prev_act_bag"] = np.zeros(self.act_bins, dtype=int)
+
+        features["prev_act_avg"] = features["prev_act_bag"].copy()
+
         return features
 
     @staticmethod
@@ -134,6 +139,15 @@ class Features:
         feat1["time_hist"] = feat1["time_hist"] + feat2["time_hist"]
         feat1["dur_hist"] = feat1["dur_hist"] + feat2["dur_hist"]
 
+        if feat1["prev_act_bag"] is None:
+            feat1["prev_act_bag"] = feat2["prev_act_bag"].copy()
+        else:
+            feat1["prev_act_bag"] = np.vstack([feat1["prev_act_bag"], feat2["prev_act_bag"]])
+
+        if feat1["prev_act_bag"].ndim > 1:
+            feat1["prev_act_avg"] = feat1["prev_act_bag"].sum(axis=0) / len(feat1["prev_act_bag"])
+        else:
+            feat1["prev_act_avg"] = feat1["prev_act_bag"].copy()
         return feat1
 
 
@@ -170,7 +184,7 @@ class GenerateSyntheticCluster:
             clust_feat[c] = obj_feat.init_features(loc=loc, loc_type=loc_type, stime=stime, duration=duration,
                                                    prev_act=prev_act)
             # print(clust_feat[c])
-            prev_act = clust_feat[c]["prev_act_bag"]
+            prev_act = clust_feat[c]["prev_act_bag"].copy()
             prev_act[self.obj_xml.space_id[loc]] += 1
         return clust_feat
 
@@ -191,7 +205,7 @@ class GenerateSyntheticCluster:
     def merge_cluster_features(self, orig_clusters_features, new_cluster_info):
         cluster_feat = dict()
         time_bins = int(24 * 60 * 60 / self.scale)
-        obj_feat = Features(time_bins=time_bins, act_bins=5, scale=self.scale)
+        obj_feat = Features(time_bins=time_bins, act_bins=len(self.obj_xml.space_id), scale=self.scale)
         for new_c in new_cluster_info:
             cluster_feat[new_c] = obj_feat.init_null_features()
             for orig_c in new_cluster_info[new_c]:
@@ -200,7 +214,7 @@ class GenerateSyntheticCluster:
 
 
 if __name__ == "__main__":
-    obj = GenerateSyntheticCluster("ADL1", "../data/synthetic_data/level1/parsed_data/synt_data_lvl1_days30_sd5_4.csv")
+    obj = GenerateSyntheticCluster("ADL1", "../data/synthetic_data/level2/parsed_data/synt_data_lvl2_days30_sd5_4.csv")
     obj.get_cluster_features()
 
     # obj_xml = SyntheticDataXML("ADL1")

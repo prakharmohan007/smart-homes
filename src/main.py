@@ -12,7 +12,7 @@ from data_visualization import DataVisualization as dv
 # from data_processing import TempDataProcessing, ClusterProcessing, DataPreparation
 # from region_growth import RegionGrowth
 
-SAVE_IMAGE = 0
+SAVE_IMAGE = 1
 SHOW_IMAGE = 0
 
 VISUALIZE = 1
@@ -77,7 +77,8 @@ if __name__ == "__main__":
     print("prepare data")
 
     obj_data = GenerateSyntheticCluster(
-        file_path="../data/synthetic_data/level1/parsed_data/synt_data_lvl1_days30_sd5_1.csv",
+        routine_type="ADL1",
+        file_path="../data/synthetic_data/level2/parsed_data/synt_data_lvl2_days30_sd5_1.csv",
         scale=30)
 
     data = obj_data.data
@@ -122,6 +123,9 @@ if __name__ == "__main__":
         cv2.namedWindow("Second Pass Clusters", cv2.WINDOW_NORMAL)
         cv2.imshow("Second Pass Clusters", img_sp)
         cv2.waitKey(0)
+
+    if SAVE_IMAGE:
+        cv2.imwrite("time_nhi_lvl2.jpg", img_sp)
 
     if VISUALIZE:
         obj_dv = dv(img_sp, label_sp)
