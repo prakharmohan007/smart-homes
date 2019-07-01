@@ -49,6 +49,17 @@ class DataVisualization:
         euc_dist = np.sqrt(sqrd_diff.sum())
         return euc_dist
 
+    @staticmethod
+    def hist_cosine_similarity(hist1, hist2):
+        h1_mag = np.linalg.norm(hist1)
+        if h1_mag == 0:
+            h1_mag = 1
+        h2_mag = np.linalg.norm(hist2)
+        if h2_mag == 0:
+            h2_mag = 1
+
+        return np.dot(hist1, hist2) / (h1_mag*h2_mag)
+
     def display_features(self, event, x, y, flags, param):
 
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -73,8 +84,11 @@ class DataVisualization:
             dur_hist_iu = self.hist_inter_union(cl["dur_hist"], cr["dur_hist"])
             time_norm_hist_int = self.hist_inter_normalized(cl["time_hist"], cr["time_hist"])
             dur_norm_hist_int = self.hist_inter_normalized(cl["dur_hist"], cr["dur_hist"])
+            time_hist_cos_sim = self.hist_cosine_similarity(cl["time_hist"], cr["time_hist"])
+            dur_cos_sim = self.hist_cosine_similarity(cl["dur_hist"], cr["dur_hist"])
             avg_stime_diff = abs(cl["stime"] - cr["stime"]) / (24*60*60)
             prev_act_euc_dist = self.hist_euclidean_dist(cl["prev_act_avg"], cr["prev_act_avg"])
+            prev_act_cos_sim = self.hist_cosine_similarity(cl["prev_act_avg"], cr["prev_act_avg"])
 
             textc = "Similarity between " + str(self.lc_id) + " and " + str(self.rc_id) + "\n" + \
                 "Number of act: Left(" + str(cl["num_clusters"]) + ")\t Right(" + str(cr["num_clusters"]) + ")\n" + \
@@ -83,9 +97,13 @@ class DataVisualization:
                 "Histogram Intersection / Union (Duration): " + str(dur_hist_iu) + "\n" + \
                 "Normalized Histogram Intersection (Time): " + str(time_norm_hist_int) + "\n" + \
                 "Normalized Histogram Intersection (Duration): " + str(dur_norm_hist_int) + "\n" + \
+                "Histogram Cosine Similarity (Time): " + str(time_hist_cos_sim) + "\n" + \
+                "Histogram Cosine Similarity (Duration): " + str(dur_cos_sim) + "\n" + \
+                "Histogram Cosine Sim (Time x Duration): " + str(time_hist_cos_sim * dur_cos_sim) + "\n" + \
                 "Average Start time difference: " + str(avg_stime_diff) + "\n" + \
                 "Previous Activity Avg:\n\t Left" + str(cl["prev_act_avg"]) + "\n\tRight" + str(cr["prev_act_avg"]) + "\n" + \
-                "Previous Activity Euclidean Distance: " + str(prev_act_euc_dist)
+                "Previous Activity Euclidean Distance: " + str(prev_act_euc_dist) + "\n" + \
+                "Previous Activity Cosine Similarity: " + str(prev_act_cos_sim)
             self.ts.delete(0.0, tkinter.END)
             self.ts.insert('insert', textc + '\n')
             self.ts.update()

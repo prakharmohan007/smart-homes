@@ -35,7 +35,48 @@ class RegionGrowth:
         else:
             return 0
 
-    def region_growth(self, cluster, cluster_feat, thresh=0.6):
+    @staticmethod
+    def hist_euclidean_dist(hist1, hist2):
+        abs_diff = np.abs(hist1 - hist2)
+        sqrd_diff = abs_diff ** 2
+        euc_dist = np.sqrt(sqrd_diff.sum())
+        return euc_dist
+
+    @staticmethod
+    def hist_cosine_similarity(hist1, hist2):
+        h1_mag = np.linalg.norm(hist1)
+        if h1_mag == 0:
+            h1_mag = 1
+        h2_mag = np.linalg.norm(hist2)
+        if h2_mag == 0:
+            h2_mag = 1
+
+        return np.dot(hist1, hist2) / (h1_mag * h2_mag)
+
+    def hist_similarity_measures(self, c1, c2, measure):
+        if measure == "hist_euclidean_dist":
+            return self.hist_euclidean_dist(c1["prev_act_avg"], c2["prev_act_avg"])
+        elif measure == "hist_inter_normalized":
+            return self.hist_inter_normalized(c1["time_hist"], c2["time_hist"])
+        elif measure == "hist_inter_union":
+            return self.hist_inter_union(c1["time_hist"], c2["time_hist"])
+        elif measure == "time_hist_cosine_sim":
+            return self.hist_cosine_similarity(c1["time_hist"], c2["time_hist"])
+        elif measure == "prevact_hist_cosine_sim":
+            return self.hist_cosine_similarity(c1["prev_act_avg"], c2["prev_act_avg"])
+        elif measure == "dur_hist_cosine_sim":
+            return self.hist_cosine_similarity(c1["dur_hist"], c2["dur_hist"])
+        elif measure == "timedur_hist_cosine_sim":
+            thcs = self.hist_cosine_similarity(c1["time_hist"], c2["time_hist"])
+            dhcs = self.hist_cosine_similarity(c1["dur_hist"], c2["dur_hist"])
+            return (thcs + dhcs)/2
+        elif measure == "durprevact_hist_cosine_sim":
+            pahcs = self.hist_cosine_similarity(c1["prev_act_avg"], c2["prev_act_avg"])
+            dhcs = self.hist_cosine_similarity(c1["dur_hist"], c2["dur_hist"])
+            start_time_diff = abs(c1["stime"] - c2["stime"]) / (24*60*60)
+            return (1-start_time_diff)*pahcs * dhcs
+
+    def region_growth(self, cluster, cluster_feat, thresh=0.6, measure="hist_inter_normalized"):
         edges = []
         num_edges = 0
         num_clusters = len(cluster_feat)
@@ -53,7 +94,8 @@ class RegionGrowth:
 
                 if cluster_feat[c1]["loc_type"].issubset(cluster_feat[c2]["loc_type"]) or \
                         cluster_feat[c2]["loc_type"].issubset(cluster_feat[c1]["loc_type"]):
-                    temp_edge['w'] = self.hist_inter_union(cluster_feat[c1]["time_hist"], cluster_feat[c2]["time_hist"])
+                    temp_edge['w'] = self.hist_similarity_measures(cluster_feat[c1], cluster_feat[c2], measure)
+                    # temp_edge['w']=self.hist_inter_union(cluster_feat[c1]["time_hist"],cluster_feat[c2]["time_hist"])
                 edges.append(temp_edge)
 
                 num_edges = num_edges + 1
@@ -68,18 +110,19 @@ class RegionGrowth:
             # print(edges[i]['a'], edges[i]['b'])
             a = obj_uf.find(edges[i]['a'] - 1)
             b = obj_uf.find(edges[i]['b'] - 1)
-            # if a not in c_id and b not in c_id and edges[i]['w'] >= thresh:
-            #     obj_uf.union(a, b)
-            #     c_id.add(a)
-            #     c_id.add(b)
-            #     success = True
-            if a != b and edges[i]['w'] >= thresh:
+            if a not in c_id and b not in c_id and edges[i]['w'] >= thresh:
                 obj_uf.union(a, b)
+                # print (a, b, edges[i]['w'])
+                c_id.add(a)
+                c_id.add(b)
                 success = True
+            # if a != b and edges[i]['w'] >= thresh:
+            #     obj_uf.union(a, b)
+            #     success = True
 
         # collect information for clusters
         cluster_pixels = {}  # cluster_id: pixels for image
-        cluster_elements = {}  # cluster_id: oriinal clluster ids
+        cluster_elements = {}  # cluster_id: original cluster ids
         old_new_cluster = {}  # cluster ID. cid from union-find are not true ids
         cluster_id = 1
 

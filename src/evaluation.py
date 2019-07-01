@@ -1,20 +1,15 @@
-import simplejson
-import matplotlib.pyplot as plt
 from random import shuffle
 import colorsys
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 
 from data_processing import GenerateSyntheticCluster
 from region_growth import RegionGrowth
 from data_visualization import DataVisualization as dv
 
-# from data_processing import TempDataProcessing, ClusterProcessing, DataPreparation
-# from region_growth import RegionGrowth
-
-SAVE_IMAGE = 0
+SAVE_IMAGE = 1
 SHOW_IMAGE = 0
-
 VISUALIZE = 0
 
 
@@ -66,29 +61,23 @@ def plot_cluster(clusters, dims):
     return image, label
 
 
-if __name__ == "__main__":
-    # create dataloader
-    print("********************************************************************************")
-    print("Hyperparameters")
-    thresh = 0.9
-    scale = 30
+def plot_graph(x, y, graph_name, i_name):
+    fig = plt.figure()
+    plt.plot(y, x, 'b')
+    plt.plot(y, x, 'b', marker='o')
+    plt.ylim(ymin=0)
+    plt.xlabel("standard deviation")
+    plt.ylabel("number of clusters")
+    plt.title(graph_name)
+    plt.savefig("../data/synthetic_data/graphs/" + i_name + "_" + graph_name + ".png")
 
-    print("********************************************************************************")
-    print("prepare data")
 
-    level = 3
-    prob = 0.3
-    sd = 20
-    filenum = 1
+def total_variance()
 
-    if prob is None:
-        filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_" + str(filenum) + ".csv"
-        imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_" + str(filenum) + ".jpg"
-    else:
-        filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(filenum) + ".csv"
-        imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(filenum) + "jpg"
 
-    filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
+def clustering(lvl, f_name):
+    filepath = "../data/synthetic_data/level" + str(lvl) + "/parsed_data/" + f_name + ".csv"
+    i_name = f_name + ".jpg"
 
     obj_data = GenerateSyntheticCluster(
         routine_type="ADL1",
@@ -169,12 +158,47 @@ if __name__ == "__main__":
         cv2.waitKey(0)
 
     if SAVE_IMAGE:
-        cv2.imwrite("../data/synthetic_data/clustered/filename", img_sp)
+        cv2.imwrite("../data/synthetic_data/clustered/" + i_name, img_sp)
 
     if VISUALIZE:
         obj_dv = dv(img_sp, label_sp)
         obj_dv.feature_comparison(clusters_feat)
 
-    print(cluster_elements)
+    return len(cluster_pixels)
 
-    exit(1)
+
+if __name__ == "__main__":
+    # create dataloader
+    print("********************************************************************************")
+    print("Hyperparameters")
+    thresh = 0.9
+    scale = 30
+
+    print("********************************************************************************")
+    print("prepare data")
+
+    lvl = 3
+    prob = [0.3, 0.5, 0.7, 0.9]
+    sd = [5, 10, 15, 20, 25, 30]
+    filenum = 5
+
+    for p in prob:
+        num_clusters = []
+        for d in sd:
+            avg_num_clusters = 0
+            for f_num in range(1, filenum+1):
+
+                if p is None:
+                    f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + str(f_num)
+                else:
+                    f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(f_num)
+
+                print(f_name)
+                res = clustering(lvl, f_name)
+                avg_num_clusters += res
+
+            num_clusters.append(int(avg_num_clusters/filenum))
+
+        print("Graph: Cluster-SD")
+        print("Clusters: ", num_clusters)
+        plot_graph(num_clusters, sd, "Cluster-SD", str(lvl)+"_"+str(p))
