@@ -61,18 +61,31 @@ def plot_cluster(clusters, dims):
     return image, label
 
 
-def plot_graph(x, y, graph_name, i_name):
+def plot_graph(x, y, graph_name, i_name, y_axis):
     fig = plt.figure()
     plt.plot(y, x, 'b')
     plt.plot(y, x, 'b', marker='o')
     plt.ylim(ymin=0)
     plt.xlabel("standard deviation")
-    plt.ylabel("number of clusters")
+    plt.ylabel(y_axis)
     plt.title(graph_name)
     plt.savefig("../data/synthetic_data/graphs/" + i_name + "_" + graph_name + ".png")
 
 
-def total_variance()
+def total_variance(cluster_feat, cluster_elements):
+    variance = 0.0
+    for region in cluster_elements:
+        stime = []
+        dur = []
+        for c_id in cluster_elements[region]:
+            stime.append(cluster_feat[c_id]["stime"])
+            dur.append(cluster_feat[c_id]["duration"])
+        stime = np.array(stime)
+        dur = np.array(dur)
+
+        reg_var = np.var(stime) + np.var(dur)
+        variance += reg_var
+    return variance
 
 
 def clustering(lvl, f_name):
@@ -86,7 +99,9 @@ def clustering(lvl, f_name):
 
     data = obj_data.data
     clusters_feat = obj_data.get_cluster_features()
+    init_cluster_feat = clusters_feat.copy()
     cluster_pixels = obj_data.get_cluster_pixels()
+    cluster_coarse = obj_data.get_cluster_coarse()
     num_days = obj_data.num_days
     num_intervals = int(24 * 60 * 60 / scale)
     print("number of days:", obj_data.num_days)
@@ -113,8 +128,9 @@ def clustering(lvl, f_name):
     success = True
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, success = obj_rg.region_growth(cluster_pixels, clusters_feat, thresh=0.7,
-                                                                         measure="timedur_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
+                                                                                         clusters_feat, thresh=0.7,
+                                                                                         measure="timedur_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -137,8 +153,9 @@ def clustering(lvl, f_name):
 
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, success = obj_rg.region_growth(cluster_pixels, clusters_feat, thresh=0.8,
-                                                                         measure="durprevact_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
+                                                                                         clusters_feat, thresh=0.8,
+                                                                                         measure="durprevact_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -164,7 +181,9 @@ def clustering(lvl, f_name):
         obj_dv = dv(img_sp, label_sp)
         obj_dv.feature_comparison(clusters_feat)
 
-    return len(cluster_pixels)
+    variance = total_variance(init_cluster_feat, cluster_coarse)
+
+    return len(cluster_pixels), variance
 
 
 if __name__ == "__main__":
@@ -184,8 +203,10 @@ if __name__ == "__main__":
 
     for p in prob:
         num_clusters = []
+        variance = []
         for d in sd:
             avg_num_clusters = 0
+            avg_var = 0
             for f_num in range(1, filenum+1):
 
                 if p is None:
@@ -194,11 +215,17 @@ if __name__ == "__main__":
                     f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(f_num)
 
                 print(f_name)
-                res = clustering(lvl, f_name)
+                res, var = clustering(lvl, f_name)
                 avg_num_clusters += res
+                avg_var += var
 
             num_clusters.append(int(avg_num_clusters/filenum))
+            variance.append(avg_var/filenum)
 
         print("Graph: Cluster-SD")
         print("Clusters: ", num_clusters)
-        plot_graph(num_clusters, sd, "Cluster-SD", str(lvl)+"_"+str(p))
+        plot_graph(num_clusters, sd, "Cluster-SD", str(lvl)+"_"+str(p), y_axis="Number of CLusters")
+
+        print("Graph: Variance-SD")
+        print("Variance", variance)
+        plot_graph(variance, sd, "Variance-SD", str(lvl)+"_"+str(p), y_axis="Variance")

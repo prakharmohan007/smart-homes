@@ -85,8 +85,10 @@ if __name__ == "__main__":
         filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_" + str(filenum) + ".csv"
         imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_" + str(filenum) + ".jpg"
     else:
-        filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(filenum) + ".csv"
-        imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(filenum) + "jpg"
+        filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(
+            filenum) + ".csv"
+        imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(
+            filenum) + "jpg"
 
     filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
 
@@ -97,7 +99,9 @@ if __name__ == "__main__":
 
     data = obj_data.data
     clusters_feat = obj_data.get_cluster_features()
+    init_cluster_feat = clusters_feat.copy()
     cluster_pixels = obj_data.get_cluster_pixels()
+    cluster_coarse = obj_data.get_cluster_coarse()
     num_days = obj_data.num_days
     num_intervals = int(24 * 60 * 60 / scale)
     print("number of days:", obj_data.num_days)
@@ -124,8 +128,9 @@ if __name__ == "__main__":
     success = True
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, success = obj_rg.region_growth(cluster_pixels, clusters_feat, thresh=0.7,
-                                                                         measure="timedur_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
+                                                                                         clusters_feat, thresh=0.7,
+                                                                                         measure="timedur_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -148,8 +153,9 @@ if __name__ == "__main__":
 
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, success = obj_rg.region_growth(cluster_pixels, clusters_feat, thresh=0.8,
-                                                                         measure="durprevact_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
+                                                                                         clusters_feat, thresh=0.8,
+                                                                                         measure="durprevact_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -175,6 +181,6 @@ if __name__ == "__main__":
         obj_dv = dv(img_sp, label_sp)
         obj_dv.feature_comparison(clusters_feat)
 
-    print(cluster_elements)
+    print(init_cluster_feat)
 
     exit(1)

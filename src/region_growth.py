@@ -76,7 +76,7 @@ class RegionGrowth:
             start_time_diff = abs(c1["stime"] - c2["stime"]) / (24*60*60)
             return (1-start_time_diff)*pahcs * dhcs
 
-    def region_growth(self, cluster, cluster_feat, thresh=0.6, measure="hist_inter_normalized"):
+    def region_growth(self, cluster, cluster_coarse, cluster_feat, thresh=0.6, measure="hist_inter_normalized"):
         edges = []
         num_edges = 0
         num_clusters = len(cluster_feat)
@@ -122,7 +122,8 @@ class RegionGrowth:
 
         # collect information for clusters
         cluster_pixels = {}  # cluster_id: pixels for image
-        cluster_elements = {}  # cluster_id: original cluster ids
+        new_cluster_course = {}
+        cluster_elements = {}  # cluster_id: previous merging cluster ids
         old_new_cluster = {}  # cluster ID. cid from union-find are not true ids
         cluster_id = 1
 
@@ -137,8 +138,10 @@ class RegionGrowth:
             if old_new_cluster[c_id] not in cluster_elements:
                 cluster_elements[old_new_cluster[c_id]] = []
                 cluster_pixels[old_new_cluster[c_id]] = []
+                new_cluster_course[old_new_cluster[c_id]] = []
 
             cluster_pixels[old_new_cluster[c_id]] += cluster[c]
+            new_cluster_course[old_new_cluster[c_id]] += cluster_coarse[c]
             cluster_elements[old_new_cluster[c_id]].append(c)
 
-        return cluster_elements, cluster_pixels, success
+        return cluster_elements, cluster_pixels, new_cluster_course, success

@@ -202,6 +202,13 @@ class GenerateSyntheticCluster:
                 clust_pixels[c].append((day - 1, cell))
         return clust_pixels
 
+    def get_cluster_coarse(self):
+        cluster_coarse = dict()
+
+        for c in range(1, len(self.data) + 1):
+            cluster_coarse[c] = [c]
+        return cluster_coarse
+
     def merge_cluster_features(self, orig_clusters_features, new_cluster_info):
         cluster_feat = dict()
         time_bins = int(24 * 60 * 60 / self.scale)
