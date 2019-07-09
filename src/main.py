@@ -15,7 +15,7 @@ from data_visualization import DataVisualization as dv
 SAVE_IMAGE = 1
 SHOW_IMAGE = 0
 
-VISUALIZE = 0
+VISUALIZE = 1
 
 
 def data_scaling(data, interval):
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     filepath = "../data/synthetic_data/uci_adl/csv_files/" + filename + ".csv"
 
     obj_data = GenerateSyntheticCluster(
-        routine_type="ADL1",
+        routine_type="UCI",
         file_path=filepath,
         scale=30)
 
@@ -154,9 +154,9 @@ if __name__ == "__main__":
         if len(cluster_pixels) != len(clusters_feat):
             print("number of clusters in cluster_pixel and cluster_feat are different")
 
-        # img_sp, label_sp = plot_cluster(cluster_pixels, dims)
-        # obj_dv = dv(img_sp, label_sp)
-        # obj_dv.feature_comparison(clusters_feat)
+        img_sp, label_sp = plot_cluster(cluster_pixels, dims)
+        obj_dv = dv(img_sp, label_sp)
+        obj_dv.feature_comparison(clusters_feat)
 
     print("preparing visual results for clusters.....")
     img_sp, label_sp = plot_cluster(cluster_pixels, dims)
