@@ -12,7 +12,7 @@ from data_visualization import DataVisualization as dv
 # from data_processing import TempDataProcessing, ClusterProcessing, DataPreparation
 # from region_growth import RegionGrowth
 
-SAVE_IMAGE = 0
+SAVE_IMAGE = 1
 SHOW_IMAGE = 0
 
 VISUALIZE = 0
@@ -90,7 +90,9 @@ if __name__ == "__main__":
         imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(
             filenum) + "jpg"
 
-    filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
+    # filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
+    filename = "A_5_1"
+    filepath = "../data/synthetic_data/uci_adl/csv_files/" + filename + ".csv"
 
     obj_data = GenerateSyntheticCluster(
         routine_type="ADL1",
@@ -138,19 +140,8 @@ if __name__ == "__main__":
         if len(cluster_pixels) != len(clusters_feat):
             print("number of clusters in cluster_pixel and cluster_feat are different")
 
-        # img_sp, label_sp = plot_cluster(cluster_pixels, dims)
-        # obj_dv = dv(img_sp, label_sp)
-        # obj_dv.feature_comparison(clusters_feat)
-        # input()
-
-    # img_sp, label_sp = plot_cluster(cluster_pixels, dims)
-    # obj_dv = dv(img_sp, label_sp)
-    # obj_dv.feature_comparison(clusters_feat)
-
     success = True
-
     print(" START TIME - DURATION and PREV ACTIVITY HISTOGRAM COSINE ")
-
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
         cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
@@ -175,7 +166,7 @@ if __name__ == "__main__":
         cv2.waitKey(0)
 
     if SAVE_IMAGE:
-        cv2.imwrite("../data/synthetic_data/clustered/filename", img_sp)
+        cv2.imwrite("../data/synthetic_data/clustered/" + filename + ".jpg", img_sp)
 
     if VISUALIZE:
         obj_dv = dv(img_sp, label_sp)
