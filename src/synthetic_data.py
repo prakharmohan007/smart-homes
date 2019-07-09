@@ -523,7 +523,7 @@ if __name__ == "__main__":
     #         obj.gen_synthetic_data(level=3, num_days=30, num_files=10, controlled=True, sdp=sd, prob=p)
     sd = [5,10,15,20,25,30]
     for sdp in sd:
-        obj.gen_uci_synthetic_data(file_path="../data/synthetic_data/uci_adl/uci_adl_orig.csv",
+        obj.gen_uci_synthetic_data(file_path="../data/synthetic_data/uci_adl/uci_adl_A_orig.csv",
                                    num_files=5,
                                    num_reps=2,
                                    controlled=True,

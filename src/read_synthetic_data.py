@@ -214,7 +214,7 @@ class ReadSyntheticData:
             processed_record = [str(day), start_time, str(end_sec - start_sec), activity, activity]
             processed_data.append(processed_record)
 
-        f_csv = open("../data/synthetic_data/uci_adl/uci_adl_orig.csv", 'w')
+        f_csv = open("../data/synthetic_data/uci_adl/uci_adl_A_orig.csv", 'w')
         csv_writer = csv.writer(f_csv)
         for row in processed_data:
             csv_writer.writerow(row)
