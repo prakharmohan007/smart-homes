@@ -389,6 +389,106 @@ class SyntheticData:
                 synt_routine = synt_routine + one_day_routine
             self.write_files(routine=synt_routine, level=3, file_num=f_num, controlled=controlled, sdp=sdp, prob=prob)
 
+    # UCI DATA SET
+    @staticmethod
+    def read_uci_data(file_path):
+        with open(file_path, 'r') as uci_csv:
+            lines = uci_csv.readlines()
+
+        uci_data = []
+        for line in lines:
+            record = line.splitlines()[0].split(sep=",")
+            uci_data.append(record)
+        del uci_data[0]
+        return uci_data
+
+    def write_uci_routine(self, file_path, routine):
+        f = open(file_path, 'w')
+        parsed_writer = csv.writer(f)
+        parsed_writer.writerow(["Day", "Start Time", "Duration", "Activity", "Location"])
+
+        for sample in routine:
+            parsed_writer.writerow(sample)
+        f.close()
+
+    def gen_uci_routine(self, day, routine, controlled, sdp):
+        synt_routine = []
+        actual_prev_end_time = 0
+        prev_end_time = self.str_time_to_sec("23:59:59")
+        is_full = False
+        for sample in routine[:-2]:
+            start_time = list(map(int, sample[0].split(sep=':')))
+            start_sec = start_time[0] * 60 * 60 + start_time[1] * 60 + start_time[2]
+            if start_sec != 0:
+                # start_sec - actual_prev_end_time = gap between two activities
+                start_sec = prev_end_time + start_sec - actual_prev_end_time
+
+            duration = int(sample[2])
+            if controlled:
+                sd = int(duration * sdp / 100.0)
+            else:
+                # randomly select Standard Deviation
+                sd_idx = random.randint(0, 2)  # 0->10%, 1->20%, 2->30%
+                # calc standard deviation as a percent of duration
+                sd = int(duration * self.sd[sd_idx] / 100.0)
+
+            rand_duration = int(random.gauss(duration, sd))
+
+            # check if activity crosses 24 hrs
+            if start_sec + rand_duration > self.str_time_to_sec("23:59:59"):
+                rand_duration = 24 * 60 * 60 - start_sec
+                is_full = True
+
+            # convert sec to time string
+            time_split, time_str = self.sec_to_time(start_sec)
+
+            # add record in synt_routine
+            synt_routine.append([str(day).zfill(2), time_str, str(rand_duration), sample[3], sample[4]])
+
+            prev_end_time = start_sec + rand_duration
+            actual_prev_end_time = self.str_time_to_sec(sample[1])
+            if is_full:
+                break
+
+        # if day is still left, add the last routine activity
+        if prev_end_time < self.str_time_to_sec("23:59:59"):
+            start_sec = prev_end_time + self.str_time_to_sec(routine[-2][0]) - actual_prev_end_time
+            rand_duration = self.str_time_to_sec("23:59:59") - start_sec
+
+            time_split, time_str = self.sec_to_time(start_sec)
+
+            synt_routine.append([str(day).zfill(2), time_str, rand_duration, routine[-2][3], routine[-2][4]])
+
+        return synt_routine
+
+    def gen_uci_synthetic_data(self, file_path, num_files=5, num_reps=2, controlled=True, sdp=10):
+        uci_data = self.read_uci_data(file_path)
+        for f_num in range(1, num_files+1):
+            synthetic_data = []
+            for reps in range(num_reps):
+                record_num = 0
+                for day in range(1, 17):
+                    routine = list()
+                    # routine.append(["Start Time", "End Time", "Duration", "Activity", "Activity"])
+                    while record_num < len(uci_data) and int(uci_data[record_num][0]) == day:
+                        start_time = uci_data[record_num][1]
+                        duration = int(uci_data[record_num][2])
+                        start_sec = self.str_time_to_sec(start_time)
+                        end_sec = start_sec + duration
+                        end_time = self.sec_to_time(end_sec)[1]
+                        activity = uci_data[record_num][3]
+                        routine.append([start_time, end_time, duration, activity, activity])
+                        record_num += 1
+                    routine.append(["_:_:_", "_:_:_", "___", "N.A.", "N.A."])
+                    # print(routine)
+                    one_day_synt_routine = self.gen_uci_routine(day+reps*16, routine, controlled, sdp)
+                    # print(one_day_synt_routine)
+                    synthetic_data += one_day_synt_routine
+                # routine for 1 day made
+            # routine for all days made
+            target_file = "../data/synthetic_data/uci_adl/csv_files/" + "A_" + str(sdp) + "_" + str(f_num) + ".csv"
+            self.write_uci_routine(target_file, synthetic_data)
+
     # level: What levels are required. 1: Lvl1, 2:lvl2, 3:lvl3, 12:lvl1&2, 13:lvl1&3, 23:lvl2&3, 123:lvl1,2&3
     # num_days: number of days in each data file
     # num_files: number of files to be generated
@@ -416,8 +516,15 @@ class SyntheticData:
 
 if __name__ == "__main__":
     obj = SyntheticData()
-    sdp = [5, 10, 15, 20, 25, 30]
-    prob = [0.3, 0.5, 0.7, 0.9]
-    for sd in sdp:
-        for p in prob:
-            obj.gen_synthetic_data(level=3, num_days=30, num_files=10, controlled=True, sdp=sd, prob=p)
+    # sdp = [5, 10, 15, 20, 25, 30]
+    # prob = [0.3, 0.5, 0.7, 0.9]
+    # for sd in sdp:
+    #     for p in prob:
+    #         obj.gen_synthetic_data(level=3, num_days=30, num_files=10, controlled=True, sdp=sd, prob=p)
+    sd = [5,10,15,20,25,30]
+    for sdp in sd:
+        obj.gen_uci_synthetic_data(file_path="../data/synthetic_data/uci_adl/uci_adl_orig.csv",
+                                   num_files=5,
+                                   num_reps=2,
+                                   controlled=True,
+                                   sdp=sdp)

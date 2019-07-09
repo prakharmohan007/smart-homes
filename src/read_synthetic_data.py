@@ -4,6 +4,7 @@
 import csv
 import cv2
 import colorsys
+import re
 from random import shuffle
 import numpy as np
 from pathlib import Path
@@ -176,10 +177,49 @@ class ReadSyntheticData:
 
             if IMG_SAVE:
                 img_name = "synt_data_lvl" + str(1) + "_days" + str(self.num_days) + "_" + str(f_no) + ".jpg"
-                image_path = self.base_dir + "image_routine/" + img_name
+                image_path = self.base_dir + "image_routine/" + img_nameLinkedIn
                 cv2.imwrite(image_path, img)
                 # cv2.imshow("image", img)
                 # cv2.waitKey(0)
+
+    def read_uci_orig_data(self):
+        uci_file = "../data/downloaded_datasets/uci_adl_dataset/OrdonezA_ADLs_edit.txt"
+        with open(uci_file, 'r') as f:
+            lines = f.readlines()
+        del lines[0:2]
+        # print(lines)
+        processed_data = []
+        processed_data.append(["day", "Start time", "Duration", "Activity", "Location"])
+        day = None
+        for line in lines:
+            record = line.split()
+            print(record)
+            # start date, start time, end date, end time, activity, location?
+
+            start_time = record[1]
+            start_sec = self.get_sec_from_time(start_time)
+            end_sec = self.get_sec_from_time(record[3])
+            activity = record[4]
+
+            if day is None:
+                day = 1
+            elif record[0] != record[2]:
+                processed_record = [str(day), start_time, str(self.get_sec_from_time("23:59:59") - start_sec), activity,
+                                    activity]
+                processed_data.append(processed_record)
+                day = day + 1
+                start_time = "00:00:00"
+                start_sec = 0
+
+            processed_record = [str(day), start_time, str(end_sec - start_sec), activity, activity]
+            processed_data.append(processed_record)
+
+        f_csv = open("../data/synthetic_data/uci_adl/uci_adl_orig.csv", 'w')
+        csv_writer = csv.writer(f_csv)
+        for row in processed_data:
+            csv_writer.writerow(row)
+        f_csv.close()
+        # print(processed_data)
 
     # level: What levels are required. 1: Lvl1, 2:lvl2, 3:lvl3, 12:lvl1&2, 13:lvl1&3, 23:lvl2&3, 123:lvl1,2&3
     def read_synthetic_data(self, level=1, scale=30, num_days=30,
@@ -202,10 +242,11 @@ class ReadSyntheticData:
 
 if __name__ == '__main__':
     obj = ReadSyntheticData()
-    sdp = [5, 10, 15, 20, 25, 30]
-    prob = [0.3, 0.5, 0.7, 0.9]
-    for sd in sdp:
-        for p in prob:
-            obj.read_synthetic_data(level=3, num_days=30, num_files=10, controlled=True, sdp=sd, prob=p)
+    # sdp = [5, 10, 15, 20, 25, 30]
+    # prob = [0.3, 0.5, 0.7, 0.9]
+    # for sd in sdp:
+    #     for p in prob:
+    #         obj.read_synthetic_data(level=3, num_days=30, num_files=10, controlled=True, sdp=sd, prob=p)
     # obj.read_synthetic_data(level=3, controlled=True, sdp=10, prob=1.0)
+    obj.read_uci_orig_data()
     exit(1)
