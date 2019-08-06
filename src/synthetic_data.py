@@ -16,8 +16,7 @@ class SyntheticData:
         self.base_dir = base_dir
         self.sd = [10, 20, 30]  # represent % of standard deviation
 
-        # level2/level3 required parameters, toilet activity noise
-        self.max_noise_event = max_noise_activity
+        # level2required parameters, toilet activity noise
 
     @staticmethod
     def read_general_routine(file_name="../data/synthetic_data/synthetic_routine.csv"):
@@ -98,7 +97,7 @@ class SyntheticData:
 
         return packed_routine
 
-    def write_files(self, routine, level=1, file_num=1, controlled=False, sdp=10, prob=None):
+    def write_files(self, routine, level=1, file_num=1, controlled=False, sdp=10, prob=None, num_noise=5):
         dir_path = self.base_dir + "level" + str(level)
         parsed_file_path = dir_path + "/parsed_data"
         raw_file_path = dir_path + "/raw_data"
@@ -127,17 +126,22 @@ class SyntheticData:
             print("[SyntheticData] write_files: Error with folder ", parsed_file_path, ", Error: ", err)
             raise
 
-        if prob is None:
-            prob_str = ""
+        if level == 2:
+            num_noise_str = "_noise" + str(num_noise)
         else:
+            num_noise_str = ""
+
+        if level == 3:
             prob_str = "_prob" + str(prob)
+        else:
+            prob_str = ""
 
         if controlled:
             file_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + "_sd" + str(
-                sdp) + prob_str + "_" + str(file_num) + ".csv"
+                sdp) + prob_str + num_noise_str + "_" + str(file_num) + ".csv"
         else:
-            file_name = "synt_data_lvl" + str(level) + "_days" + str(self.num_days) + prob_str + "_" + str(
-                file_num) + ".csv"
+            file_name = "synt_data_lvl" + str(level) + "_days" + str(
+                self.num_days) + prob_str + num_noise_str + "_" + str(file_num) + ".csv"
 
         f1 = open(raw_file_path + "/" + file_name, 'w')
         raw_writer = csv.writer(f1)
@@ -305,7 +309,7 @@ class SyntheticData:
             self.write_files(routine=synt_routine, level=1, file_num=f_num, controlled=controlled, sdp=sdp)
 
     # level2 = level1 with randomly distributed toilet activity
-    def level_2(self, routine, controlled=False, sdp=10):
+    def level_2(self, routine, controlled=False, sdp=10, num_noise=5):
         if controlled:
             print("[SyntheticData] Level_2: Generating level2 data for ", self.num_files, "files, ", self.num_days,
                   " days and controlled SD of " + str(sdp) + "% in each file.")
@@ -322,7 +326,7 @@ class SyntheticData:
 
                 # introduce noise
                 # ..get a random number of instances of noise
-                num_act = random.randint(a=1, b=self.max_noise_event)
+                num_act = random.randint(a=1, b=num_noise)
                 act_dur = int(routine[-1][2])  # last record in routine is the noise
                 act_sd = int(act_dur / 10)  # setting standard deviation to 10%
                 num_cells = int(24 * 60 * 60 / self.scale)
@@ -358,10 +362,10 @@ class SyntheticData:
                         else:
                             # ..else introduce the noise
                             for row in unpacked[act_cell:end_cell + 1]:
-                                row[2] = routine[-1][3] + str(noise_num)
+                                row[2] = routine[-1][3]  # + str(noise_num)
                                 row[3] = routine[-1][4]
                             noise_num = noise_num + 1
-                            print(noise_num)
+                            # print(noise_num)
                             success = True
 
                 # pack one-day-routine to actual format
@@ -369,7 +373,8 @@ class SyntheticData:
                 synt_routine = synt_routine + packed
                 # print(packed)
 
-            self.write_files(routine=synt_routine, level=2, file_num=f_num, controlled=controlled, sdp=sdp)
+            self.write_files(routine=synt_routine, level=2, file_num=f_num, controlled=controlled, sdp=sdp,
+                             num_noise=num_noise)
 
     def level_3(self, routine, controlled=False, sdp=5, prob=0.7):
         if controlled:
@@ -463,11 +468,11 @@ class SyntheticData:
 
     def gen_uci_synthetic_data(self, file_path, num_files=5, num_reps=2, controlled=True, sdp=10):
         uci_data = self.read_uci_data(file_path)
-        for f_num in range(1, num_files+1):
+        for f_num in range(1, num_files + 1):
             synthetic_data = []
             for reps in range(num_reps):
                 record_num = 0
-                for day in range(1, 17):
+                for day in range(1, 15):
                     routine = list()
                     # routine.append(["Start Time", "End Time", "Duration", "Activity", "Activity"])
                     while record_num < len(uci_data) and int(uci_data[record_num][0]) == day:
@@ -481,19 +486,19 @@ class SyntheticData:
                         record_num += 1
                     routine.append(["_:_:_", "_:_:_", "___", "N.A.", "N.A."])
                     # print(routine)
-                    one_day_synt_routine = self.gen_uci_routine(day+reps*16, routine, controlled, sdp)
+                    one_day_synt_routine = self.gen_uci_routine(day + reps * 14, routine, controlled, sdp)
                     # print(one_day_synt_routine)
                     synthetic_data += one_day_synt_routine
                 # routine for 1 day made
             # routine for all days made
-            target_file = "../data/synthetic_data/uci_adl/csv_files/" + "A_" + str(sdp) + "_" + str(f_num) + ".csv"
+            target_file = "../data/synthetic_data/uci_adl/csv_files/" + "B_" + str(sdp) + "_" + str(f_num) + ".csv"
             self.write_uci_routine(target_file, synthetic_data)
 
     # level: What levels are required. 1: Lvl1, 2:lvl2, 3:lvl3, 12:lvl1&2, 13:lvl1&3, 23:lvl2&3, 123:lvl1,2&3
     # num_days: number of days in each data file
     # num_files: number of files to be generated
     def gen_synthetic_data(self, level=1, scale=30, num_days=30,
-                           num_files=5, controlled=False, sdp=10, prob=0.7,
+                           num_files=5, controlled=False, sdp=10, prob=0.7, num_noise=5,
                            base_dir="../data/synthetic_data/",
                            file_name="synthetic_routine.csv"):
         self.scale = scale
@@ -506,25 +511,27 @@ class SyntheticData:
         if level == 1:
             self.level_1(routine, controlled, sdp)
         elif level == 2:
-            self.level_2(routine, controlled, sdp)
+            self.level_2(routine, controlled, sdp, num_noise)
         elif level == 3:
             self.level_3(routine, controlled, sdp, prob)
         elif level == 12:
             self.level_1(routine, controlled, sdp)
-            self.level_2(routine, controlled, sdp)
+            self.level_2(routine, controlled, sdp, num_noise)
 
 
 if __name__ == "__main__":
     obj = SyntheticData()
-    # sdp = [5, 10, 15, 20, 25, 30]
-    # prob = [0.3, 0.5, 0.7, 0.9]
-    # for sd in sdp:
-    #     for p in prob:
-    #         obj.gen_synthetic_data(level=3, num_days=30, num_files=10, controlled=True, sdp=sd, prob=p)
-    sd = [5,10,15,20,25,30]
-    for sdp in sd:
-        obj.gen_uci_synthetic_data(file_path="../data/synthetic_data/uci_adl/uci_adl_A_orig.csv",
-                                   num_files=5,
-                                   num_reps=2,
-                                   controlled=True,
-                                   sdp=sdp)
+    num_noise = 10  # change this value for varying number of noise each day in level2
+    sdp = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+    prob = [0.3, 0.5, 0.7, 0.9]
+    for sd in sdp:
+        # for p in prob:
+        obj.gen_synthetic_data(level=2, num_days=30, num_files=5, controlled=True, sdp=sd, prob=None,
+                               num_noise=num_noise)
+    # sd = [5, 10, 15, 20, 25, 30]
+    # for sdp in sd:
+    #     obj.gen_uci_synthetic_data(file_path="../data/synthetic_data/uci_adl/uci_adl_B_orig.csv",
+    #                                num_files=5,
+    #                                num_reps=2,
+    #                                controlled=True,
+    #                                sdp=sdp)
