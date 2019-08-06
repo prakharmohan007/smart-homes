@@ -18,6 +18,57 @@ SHOW_IMAGE = 0
 VISUALIZE = 1
 
 
+def total_RMSE(cluster_feat, cluster_elements):
+    variance = 0.0
+    num_contributors = 0
+    for region in cluster_elements:
+        if len(cluster_elements[region]) > 1:
+            stime = []
+            dur = []
+            for c_id in cluster_elements[region]:
+                stime.append(cluster_feat[c_id]["stime"])
+                dur.append(cluster_feat[c_id]["duration"])
+            stime = np.array(stime)
+            dur = np.array(dur)
+
+            reg_var = np.var(stime) + np.var(dur)
+            # reg_var = variance_norm(stime) + variance_norm(dur)
+            # print(reg_var, len(cluster_elements[region]))
+            variance += np.sqrt(reg_var)
+            num_contributors += 1
+        # print(variance - prev_var, len(cluster_elements[region]))
+    # variance = variance/num_contributors
+    return variance
+
+
+def total_MAE(cluster_feat, cluster_elements):
+    total_mae = 0.0
+    num_contributors = 0
+    for region in cluster_elements:
+        if len(cluster_elements[region]) > 1:
+            stime = []
+            dur = []
+            for c_id in cluster_elements[region]:
+                stime.append(cluster_feat[c_id]["stime"])
+                dur.append(cluster_feat[c_id]["duration"])
+            stime = np.array(stime)
+            dur = np.array(dur)
+
+            stime_mean = np.mean(stime)
+            dur_mean = np.mean(dur)
+
+            stime_mae = np.sum(np.absolute(stime - stime_mean))
+            dur_mae = np.sum(np.absolute(dur - dur_mean))
+
+            reg_mae = stime_mae + dur_mae
+            # reg_var = variance_norm(stime) + variance_norm(dur)
+            # print(reg_var, len(cluster_elements[region]))
+            total_mae += np.sqrt(reg_mae)
+            num_contributors += 1
+    # variance = variance/num_contributors
+    return total_mae
+
+
 def data_scaling(data, interval):
     scaled_data = []
     cols = len(data[0])
@@ -76,9 +127,9 @@ if __name__ == "__main__":
     print("********************************************************************************")
     print("prepare data")
 
-    level = 3
-    prob = 0.3
-    sd = 20
+    level = 2
+    prob = None
+    sd = 30
     filenum = 1
 
     if prob is None:
@@ -91,8 +142,8 @@ if __name__ == "__main__":
             filenum) + "jpg"
 
     # filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
-    filename = "A_5_1"
-    filepath = "../data/synthetic_data/uci_adl/csv_files/" + filename + ".csv"
+    filename = "uci_adl_A_orig"
+    filepath = "../data/synthetic_data/uci_adl/" + filename + ".csv"
 
     obj_data = GenerateSyntheticCluster(
         routine_type="UCI",
@@ -154,9 +205,9 @@ if __name__ == "__main__":
         if len(cluster_pixels) != len(clusters_feat):
             print("number of clusters in cluster_pixel and cluster_feat are different")
 
-        img_sp, label_sp = plot_cluster(cluster_pixels, dims)
-        obj_dv = dv(img_sp, label_sp)
-        obj_dv.feature_comparison(clusters_feat)
+        # img_sp, label_sp = plot_cluster(cluster_pixels, dims)
+        # obj_dv = dv(img_sp, label_sp)
+        # obj_dv.feature_comparison(clusters_feat)
 
     print("preparing visual results for clusters.....")
     img_sp, label_sp = plot_cluster(cluster_pixels, dims)
@@ -170,8 +221,12 @@ if __name__ == "__main__":
 
     if VISUALIZE:
         obj_dv = dv(img_sp, label_sp)
-        obj_dv.feature_comparison(clusters_feat)
+        obj_dv.feature_comparison(clusters_feat, init_cluster_feat, cluster_coarse)
 
-    print(init_cluster_feat)
+    rmse = total_RMSE(init_cluster_feat, cluster_coarse)
+    mae = total_MAE(init_cluster_feat, cluster_coarse)
+    print("number of clusters: ", len(cluster_pixels))
+    print("RMSE: ", rmse)
+    print("MAE: ", mae)
 
     exit(1)

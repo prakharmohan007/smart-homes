@@ -25,6 +25,29 @@ class DataVisualization:
             return 0
 
     @staticmethod
+    def variance_norm(arr):
+        l_arr = np.max(arr)
+        if l_arr == 0:
+            l_arr = 1
+        norm_arr = arr / l_arr
+        # print(norm_arr)
+        print(norm_arr)
+        var_arr = np.var(norm_arr)
+        return var_arr
+
+    def total_variance(self, feature, cluster_elements):
+        feat = []
+        for c_id in cluster_elements:
+            feat.append(self.init_cf[c_id][feature])
+            # dur.append(self.init_cf[c_id]["duration"])
+        feat = np.array(feat)
+        # dur = np.array(dur)
+        print(feature)
+        # reg_var = np.var(stime) + np.var(dur)
+        # reg_var = self.variance_norm(stime) + self.variance_norm(dur)
+        return self.variance_norm(feat)
+
+    @staticmethod
     def hist_inter_normalized(hist1, hist2):
         intersection = np.logical_and(hist1, hist2)
         inter = np.sum(intersection)
@@ -89,6 +112,12 @@ class DataVisualization:
             avg_stime_diff = abs(cl["stime"] - cr["stime"]) / (24*60*60)
             prev_act_euc_dist = self.hist_euclidean_dist(cl["prev_act_avg"], cr["prev_act_avg"])
             prev_act_cos_sim = self.hist_cosine_similarity(cl["prev_act_avg"], cr["prev_act_avg"])
+            left_stime_var = self.total_variance("stime", self.cc[self.lc_id])
+            left_dur_var = self.total_variance("duration", self.cc[self.lc_id])
+            left_reg_var = left_stime_var + left_dur_var
+            right_stime_var = self.total_variance("stime", self.cc[self.rc_id])
+            right_dur_var = self.total_variance("duration", self.cc[self.rc_id])
+            right_reg_var = right_stime_var + right_dur_var
 
             textc = "Similarity between " + str(self.lc_id) + " and " + str(self.rc_id) + "\n" + \
                 "Number of act: Left(" + str(cl["num_clusters"]) + ")\t Right(" + str(cr["num_clusters"]) + ")\n" + \
@@ -103,13 +132,18 @@ class DataVisualization:
                 "Average Start time difference: " + str(avg_stime_diff) + "\n" + \
                 "Previous Activity Avg:\n\t Left" + str(cl["prev_act_avg"]) + "\n\tRight" + str(cr["prev_act_avg"]) + "\n" + \
                 "Previous Activity Euclidean Distance: " + str(prev_act_euc_dist) + "\n" + \
-                "Previous Activity Cosine Similarity: " + str(prev_act_cos_sim)
+                "Previous Activity Cosine Similarity: " + str(prev_act_cos_sim) + "\n" + \
+                "Region Variance (stime + duration): \n\t" + \
+                "Left: " + str(left_reg_var)[:6] + "\t" + str(left_stime_var)[:6] + "\t" + str(left_dur_var)[:6] + "\n\t" + \
+                "Right: " + str(right_reg_var)[:6] + "\t" + str(right_stime_var)[:6] + "\t" + str(right_dur_var)[:6]
             self.ts.delete(0.0, tkinter.END)
             self.ts.insert('insert', textc + '\n')
             self.ts.update()
 
-    def feature_comparison(self, cluster_feat={}):
+    def feature_comparison(self, cluster_feat={}, init_cluster_feat={}, cluster_coarse={}):
         self.cf = cluster_feat
+        self.init_cf = init_cluster_feat
+        self.cc = cluster_coarse
 
         # load the image, clone it, and setup the mouse callback function
         img = self.image.copy()
@@ -131,7 +165,7 @@ class DataVisualization:
 
         Label(self.master, text="Similarity / Distance", fg="green", font=("", 15, "bold")).grid(row=3, column=1,
                                                                                                  columnspan=2)
-        self.ts = Text(self.master, bd=0, width=75, height=20, font='Fixdsys -14')
+        self.ts = Text(self.master, bd=0, width=100, height=50, font='Fixdsys -14')
         self.ts.grid(row=4, column=1, columnspan=2, rowspan=2)
 
         while True:

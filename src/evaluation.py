@@ -8,7 +8,7 @@ from data_processing import GenerateSyntheticCluster
 from region_growth import RegionGrowth
 from data_visualization import DataVisualization as dv
 
-SAVE_IMAGE = 1
+SAVE_IMAGE = 0
 SHOW_IMAGE = 0
 VISUALIZE = 0
 
@@ -61,31 +61,105 @@ def plot_cluster(clusters, dims):
     return image, label
 
 
+def plot_subgraphs(x, y, plot_labels, graph_name, i_name, y_axis):
+    plt.rc('xtick', labelsize=20)
+    plt.rc('ytick', labelsize=20)
+    fig = plt.figure()
+    marker = ['o', 'x', '*', 'p']
+    line = ['-', '--', '-.', ':']
+    cmap = plt.cm.get_cmap("hsv", len(plot_labels))
+    for p in range(len(plot_labels)):
+        # print(x[p])
+        # plt.plot(y, x[p], c=cmap(p), label=str(plot_labels[p]))
+        # plt.plot(y, x[p], c=cmap(p), marker='o')
+        color = np.random.rand(3,)
+        plt.plot(y, x[p], linestyle=line[p], color='k', marker=marker[p], label=str(plot_labels[p]))
+        # plt.plot(y, x[p], color='k', marker=marker[p])
+
+    plt.legend(prop={'size': 20})
+    plt.ylim(ymin=0)
+    plt.xlabel("standard deviation", fontsize=20)
+    plt.ylabel(y_axis, fontsize=20)
+    # plt.title(graph_name)
+    # plt.pause(1)
+    plt.savefig("../data/synthetic_data/graphs/" + i_name + "_" + graph_name + ".png")
+    plt.show()
+
+
 def plot_graph(x, y, graph_name, i_name, y_axis):
+    plt.rc('xtick', labelsize=20)
+    plt.rc('ytick', labelsize=20)
     fig = plt.figure()
     plt.plot(y, x, 'b')
     plt.plot(y, x, 'b', marker='o')
     plt.ylim(ymin=0)
-    plt.xlabel("standard deviation")
-    plt.ylabel(y_axis)
-    plt.title(graph_name)
+    plt.xlabel("standard deviation", fontsize=20)
+    plt.ylabel(y_axis, fontsize=20)
+    # plt.title(graph_name, fontsize=1)
     plt.savefig("../data/synthetic_data/graphs/" + i_name + "_" + graph_name + ".png")
+    plt.show()
 
 
-def total_variance(cluster_feat, cluster_elements):
+def variance_norm(arr):
+    l_arr = np.max(arr)
+    if l_arr == 0:
+        l_arr = 1
+    norm_arr = arr/l_arr
+    # print(norm_arr)
+    var_arr = np.var(norm_arr)
+    return var_arr
+
+
+def total_RMSE(cluster_feat, cluster_elements):
     variance = 0.0
+    num_contributors = 0
+    prev_var = 0
     for region in cluster_elements:
-        stime = []
-        dur = []
-        for c_id in cluster_elements[region]:
-            stime.append(cluster_feat[c_id]["stime"])
-            dur.append(cluster_feat[c_id]["duration"])
-        stime = np.array(stime)
-        dur = np.array(dur)
+        if len(cluster_elements[region]) > 1:
+            stime = []
+            dur = []
+            for c_id in cluster_elements[region]:
+                stime.append(cluster_feat[c_id]["stime"])
+                dur.append(cluster_feat[c_id]["duration"])
+            stime = np.array(stime)
+            dur = np.array(dur)
 
-        reg_var = np.var(stime) + np.var(dur)
-        variance += reg_var
+            reg_var = np.var(stime) + np.var(dur)
+            # reg_var = variance_norm(stime) + variance_norm(dur)
+            # print(reg_var, len(cluster_elements[region]))
+            variance += np.sqrt(reg_var)
+            num_contributors += 1
+        # print(variance - prev_var, len(cluster_elements[region]))
+        prev_var = variance
+    # variance = variance/num_contributors
     return variance
+
+def total_MAE(cluster_feat, cluster_elements):
+    total_mae = 0.0
+    num_contributors = 0
+    for region in cluster_elements:
+        if len(cluster_elements[region]) > 1:
+            stime = []
+            dur = []
+            for c_id in cluster_elements[region]:
+                stime.append(cluster_feat[c_id]["stime"])
+                dur.append(cluster_feat[c_id]["duration"])
+            stime = np.array(stime)
+            dur = np.array(dur)
+
+            stime_mean = np.mean(stime)
+            dur_mean = np.mean(dur)
+
+            stime_mae = np.sum(np.absolute(stime - stime_mean))
+            dur_mae = np.sum(np.absolute(dur - dur_mean))
+
+            reg_mae = stime_mae + dur_mae
+            # reg_var = variance_norm(stime) + variance_norm(dur)
+            # print(reg_var, len(cluster_elements[region]))
+            total_mae += np.sqrt(reg_mae)
+            num_contributors += 1
+    # variance = variance/num_contributors
+    return total_mae
 
 
 def clustering(lvl, f_name):
@@ -181,9 +255,10 @@ def clustering(lvl, f_name):
         obj_dv = dv(img_sp, label_sp)
         obj_dv.feature_comparison(clusters_feat)
 
-    variance = total_variance(init_cluster_feat, cluster_coarse)
+    variance = total_RMSE(init_cluster_feat, cluster_coarse)
+    mae = total_MAE(init_cluster_feat, cluster_coarse)
 
-    return len(cluster_pixels), variance
+    return len(cluster_pixels), variance, mae
 
 
 if __name__ == "__main__":
@@ -198,15 +273,20 @@ if __name__ == "__main__":
 
     lvl = 3
     prob = [0.3, 0.5, 0.7, 0.9]
-    sd = [5, 10, 15, 20, 25, 30]
+    sd = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
     filenum = 5
 
+    cluster_plot = []
+    rmse_plot = []
+    mae_plot = []
     for p in prob:
         num_clusters = []
-        variance = []
+        rmse_sd = []
+        mae_sd = []
         for d in sd:
             avg_num_clusters = 0
             avg_var = 0
+            avg_mae = 0
             for f_num in range(1, filenum+1):
 
                 if p is None:
@@ -215,17 +295,39 @@ if __name__ == "__main__":
                     f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(f_num)
 
                 print(f_name)
-                res, var = clustering(lvl, f_name)
+                res, var, mae = clustering(lvl, f_name)
                 avg_num_clusters += res
                 avg_var += var
+                avg_mae += mae
 
             num_clusters.append(int(avg_num_clusters/filenum))
-            variance.append(avg_var/filenum)
+            rmse_sd.append(avg_var/(filenum*1000))
+            mae_sd.append(avg_mae/(filenum*1000))
+        cluster_plot.append(num_clusters)
+        rmse_plot.append(rmse_sd)
+        mae_plot.append(mae_sd)
 
+    if lvl != 3:
         print("Graph: Cluster-SD")
-        print("Clusters: ", num_clusters)
-        plot_graph(num_clusters, sd, "Cluster-SD", str(lvl)+"_"+str(p), y_axis="Number of CLusters")
+        print("Clusters: ", cluster_plot[0])
+        plot_graph(cluster_plot[0], sd, "Level "+str(lvl)+":  Cluster-SD", str(lvl), y_axis="Number of CLusters")
 
-        print("Graph: Variance-SD")
-        print("Variance", variance)
-        plot_graph(variance, sd, "Variance-SD", str(lvl)+"_"+str(p), y_axis="Variance")
+        print("Graph: RMSE-SD")
+        print("RMSE", rmse_plot[0])
+        plot_graph(rmse_plot[0], sd, "Level "+str(lvl)+":  RMSE-SD", str(lvl), y_axis="RMSE (scale=1000)")
+
+        print("Graph: MAE-SD")
+        print("MAE", mae_plot[0])
+        plot_graph(mae_plot[0], sd, "Level "+str(lvl)+":  MAE-SD", str(lvl), y_axis="MAE (scale=1000)")
+    else:
+        print("Graph: Cluster-SD")
+        print("Clusters: ", cluster_plot)
+        plot_subgraphs(cluster_plot, sd, prob, "Level "+str(lvl)+":  Cluster-SD", str(lvl), y_axis="Number of CLusters")
+
+        print("Graph: RMSE-SD")
+        print("RMSE", rmse_plot)
+        plot_subgraphs(rmse_plot, sd, prob, "Level "+str(lvl)+": RMSE-SD", str(lvl), y_axis="RMSE (scale=1000)")
+
+        print("Graph: MAE-SD")
+        print("MAE", mae_plot)
+        plot_subgraphs(mae_plot, sd, prob, "Level "+str(lvl)+": MAE-SD", str(lvl), y_axis="MAE (scale=1000)")
