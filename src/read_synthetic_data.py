@@ -10,6 +10,7 @@ import numpy as np
 from pathlib import Path
 
 IMG_SAVE = 1
+IMG_SHOW = 1
 
 
 class ReadSyntheticData:
@@ -68,7 +69,6 @@ class ReadSyntheticData:
         labelset = dict()
         rows = len(routine)
         cols = len(routine[0])
-        # print(rows, cols)
         label = 0
         p = 0
         r = 1
@@ -97,6 +97,7 @@ class ReadSyntheticData:
             # print(p)
 
         elements = list(elements)
+        print("Number of elements or unique activities: ", len(elements))
         # labelset = list(labelset)
         num_elements = len(elements)
         color_gen = ReadSyntheticData.get_distinct_colors(num_elements)
@@ -311,15 +312,36 @@ class ReadSyntheticData:
             self.read_level(level=1, controlled=controlled, sdp=sdp)
             self.read_level(level=2, controlled=controlled, sdp=sdp, num_noise=num_noise)
 
+    def read_sequence_matching_data(self, base_dir, filename):
+        routine = []
+        with open(base_dir+filename, 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            if len(line) > 10:
+                routine.append(list(line.split()[0]))
+        img, label_img = self.get_image2(routine)
+
+        if IMG_SAVE:
+            img_name = filename.split(sep='.')[0] + ".png"
+            image_path = base_dir + "images/" + img_name
+            label_image_path = base_dir + "images/label" + img_name
+            cv2.imwrite(image_path, img)
+            cv2.imwrite(label_image_path, label_img)
+
+        if IMG_SHOW:
+            cv2.imshow("image", img)
+            cv2.waitKey(0)
+
 
 if __name__ == '__main__':
     obj = ReadSyntheticData()
     num_noise = 10  # change this for controlling the number of noise each day in level2
-    sdp = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
-    prob = [0.3, 0.5, 0.7, 0.9]
-    for sd in sdp:
-        # for p in prob:
-        obj.read_synthetic_data(level=2, num_days=30, num_files=5, controlled=True, sdp=sd, prob=None, num_noise=num_noise)
+    # sdp = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+    # prob = [0.3, 0.5, 0.7, 0.9]
+    # for sd in sdp:
+    #     # for p in prob:
+    #     obj.read_synthetic_data(level=1, num_days=30, num_files=5, controlled=True, sdp=sd, prob=None, num_noise=num_noise)
     # obj.read_synthetic_data(level=3, controlled=True, sdp=10, prob=1.0)
     # obj.read_uci_orig_data()
+    obj.read_sequence_matching_data(base_dir="../data/sequence_matching/", filename="sample.txt")
     exit(1)
