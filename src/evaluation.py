@@ -8,7 +8,7 @@ from data_processing import GenerateSyntheticCluster
 from region_growth import RegionGrowth
 from data_visualization import DataVisualization as dv
 
-SAVE_IMAGE = 0
+SAVE_IMAGE = 1
 SHOW_IMAGE = 0
 VISUALIZE = 0
 
@@ -134,6 +134,7 @@ def total_RMSE(cluster_feat, cluster_elements):
     # variance = variance/num_contributors
     return variance
 
+
 def total_MAE(cluster_feat, cluster_elements):
     total_mae = 0.0
     num_contributors = 0
@@ -164,7 +165,7 @@ def total_MAE(cluster_feat, cluster_elements):
 
 def clustering(lvl, f_name):
     filepath = "../data/synthetic_data/level" + str(lvl) + "/parsed_data/" + f_name + ".csv"
-    i_name = f_name + ".jpg"
+    i_name = f_name + ".png"
 
     obj_data = GenerateSyntheticCluster(
         routine_type="ADL1",

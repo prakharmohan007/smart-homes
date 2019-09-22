@@ -1,5 +1,6 @@
 import numpy as np
 import xml.etree.ElementTree as ET
+from space_mapper import SpaceMapper
 
 
 def time_to_sec(t):
@@ -218,6 +219,24 @@ class GenerateSyntheticCluster:
             for orig_c in new_cluster_info[new_c]:
                 cluster_feat[new_c] = obj_feat.merge_features(cluster_feat[new_c], orig_clusters_features[orig_c])
         return cluster_feat
+
+
+class ReadData:
+    def __init__(self, subject_id=2,
+                 num_days=30,
+                 dir_name="../data/experimental_data/Subject_2/processed_data",
+                 file_name=None,
+                 time_interval=5):
+        self.dir_name = dir_name
+        self.file_name = file_name
+        # self.unprocessed_data_dict, self.unprocessed_data_list = self.loadCSV()
+        self.num_days = num_days
+        self.time_interval = time_interval
+        self.subject_id = subject_id
+        self.subject_info = SpaceMapper(subject_id=subject_id)
+        print("[DataPreparation] init: Object initialized for subject ", subject_id)
+        print("[DataPreparation] init: Creating data for subject ", subject_id)
+        self.image = self.read_files()
 
 
 if __name__ == "__main__":
