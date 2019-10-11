@@ -122,7 +122,8 @@ class RegionGrowth:
                 cluster_new_hist[cluster_old_new[i]] = cluster_feat[i]["loc_array"]
         return cluster_new_old
 
-    def region_growth(self, cluster_pixels, cluster_coarse, cluster_feat, thresh=0.6, measure="hist_inter_normalized"):
+    # synthetic data
+    def synt_region_growth(self, cluster_pixels, cluster_coarse, cluster_feat, thresh=0.6, measure="hist_inter_normalized"):
         edges = []
         num_edges = 0
         num_clusters = len(cluster_feat)
@@ -140,6 +141,78 @@ class RegionGrowth:
 
                 if cluster_feat[c1]["loc_type"].issubset(cluster_feat[c2]["loc_type"]) or \
                         cluster_feat[c2]["loc_type"].issubset(cluster_feat[c1]["loc_type"]):
+                    temp_edge['w'] = self.hist_similarity_measures(cluster_feat[c1], cluster_feat[c2], measure)
+                    # temp_edge['w']=self.hist_inter_union(cluster_feat[c1]["time_hist"],cluster_feat[c2]["time_hist"])
+                edges.append(temp_edge)
+
+                num_edges = num_edges + 1
+                # print(c1, c2)
+
+        # Union
+        success = False
+        print("[RegionGrowth] region_growth: performing union-find")
+        obj_uf = UnionFind(num_clusters)
+        c_id = set()
+        for i in range(num_edges):
+            # print(edges[i]['a'], edges[i]['b'])
+            a = obj_uf.find(edges[i]['a'] - 1)
+            b = obj_uf.find(edges[i]['b'] - 1)
+            if a not in c_id and b not in c_id and edges[i]['w'] >= thresh:
+                obj_uf.union(a, b)
+                # print (a, b, edges[i]['w'])
+                c_id.add(a)
+                c_id.add(b)
+                success = True
+            # if a != b and edges[i]['w'] >= thresh:
+            #     obj_uf.union(a, b)
+            #     success = True
+
+        # collect information for clusters
+        cluster_new_pixels = {}  # new cluster_id: pixels for image
+        new_cluster_course = {}  # new cluster_id: original clusters
+        cluster_new_old = {}  # new cluster_id: previous step cluster ids
+        cluster_uf_new = {}  # cluster ID: union-find ids to actual new ids
+        cluster_id = 1
+
+        # c is the original cluster
+        for c in cluster_pixels:
+            c_id = obj_uf.find(c - 1)
+
+            # if the cluster has not been allotted an id, alot it
+            if c_id not in cluster_uf_new:
+                cluster_uf_new[c_id] = cluster_id
+                cluster_id = cluster_id + 1
+
+            if cluster_uf_new[c_id] not in cluster_new_old:
+                cluster_new_old[cluster_uf_new[c_id]] = []
+                cluster_new_pixels[cluster_uf_new[c_id]] = []
+                new_cluster_course[cluster_uf_new[c_id]] = []
+
+            cluster_new_pixels[cluster_uf_new[c_id]] += cluster_pixels[c]
+            new_cluster_course[cluster_uf_new[c_id]] += cluster_coarse[c]
+            cluster_new_old[cluster_uf_new[c_id]].append(c)
+
+        return cluster_new_old, cluster_new_pixels, new_cluster_course, success
+
+    # real data
+    def region_growth(self, cluster_pixels, cluster_coarse, cluster_feat, thresh=0.6,
+                      measure="hist_inter_normalized"):
+        edges = []
+        num_edges = 0
+        num_clusters = len(cluster_feat)
+        print("[RegionGrowth] number of clusters: ", num_clusters)
+
+        # form edges
+        print("[RegionGrowth] region_growth: Forming cluster edges")
+        c_id = set(cluster_feat.keys())
+        while len(c_id) > 1:
+            c1 = c_id.pop()
+            for c2 in c_id:
+                temp_edge = self.edge.copy()
+                temp_edge['a'] = c1
+                temp_edge['b'] = c2
+
+                if self.hist_cosine_similarity(cluster_feat[c1]["loc_array"], cluster_feat[c2]["loc_array"]) > 0.8:
                     temp_edge['w'] = self.hist_similarity_measures(cluster_feat[c1], cluster_feat[c2], measure)
                     # temp_edge['w']=self.hist_inter_union(cluster_feat[c1]["time_hist"],cluster_feat[c2]["time_hist"])
                 edges.append(temp_edge)

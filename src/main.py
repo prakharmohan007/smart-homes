@@ -356,7 +356,6 @@ def real_dataset():
             for c in cf:
                 print(c, cf[c]["loc_array"])
 
-
         # merge adjacent single day similar activities
         cluster_new_old = rgobj.cluster_sameday_activity(cf)
         cf, cp = realgenobj.merge_sameday_cluster_features(cluster_new_old, cf, cp)
@@ -380,10 +379,6 @@ def real_dataset():
     dims = (num_days, num_intervals, 3)
     print("preparing visual results for clusters.....")
     img_fp, label = plot_cluster(cluster_pixel, dims)
-    if SHOW_IMAGE:
-        cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
-        cv2.imshow("First Pass Clusters", img_fp)
-        cv2.waitKey(0)
 
     print("num days: ", num_days)
     print("Initial number of clusters: ", len(cluster_feat))
@@ -392,6 +387,15 @@ def real_dataset():
     cluster_coarse = dict()
     for c in cluster_feat:
         cluster_coarse[c] = [c]
+
+    if SHOW_IMAGE:
+        if VISUALIZE:
+            obj_dv = dv(img_fp, label)
+            obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+        else:
+            cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+            cv2.imshow("First Pass Clusters", img_fp)
+            cv2.waitKey(0)
 
     print("********************************************************************************")
     print("performing Hierarchical merging.....")
@@ -416,9 +420,13 @@ def real_dataset():
     print("preparing visual results for clusters.....")
     img_sp, label = plot_cluster(cluster_pixel, dims)
     if SHOW_IMAGE:
-        cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
-        cv2.imshow("First Pass Clusters", img_sp)
-        cv2.waitKey(0)
+        if VISUALIZE:
+            obj_dv = dv(img_sp, label)
+            obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+        else:
+            cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+            cv2.imshow("First Pass Clusters", img_sp)
+            cv2.waitKey(0)
 
     success = True
     print(" START TIME - DURATION and PREV ACTIVITY HISTOGRAM COSINE ")
@@ -427,7 +435,7 @@ def real_dataset():
         cluster_new_old, cluster_pixel, cluster_coarse, success = rgobj.region_growth(cluster_pixel,
                                                                                       cluster_coarse,
                                                                                       cluster_feat,
-                                                                                      thresh=0.8,
+                                                                                      thresh=0.9,
                                                                                       measure="durprevact_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixel))
         print("Preparing features for new clusters")
@@ -443,13 +451,13 @@ def real_dataset():
     print("preparing visual results for clusters.....")
     img_sp, label = plot_cluster(cluster_pixel, dims)
     if SHOW_IMAGE:
-        cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
-        cv2.imshow("First Pass Clusters", img_sp)
-        cv2.waitKey(0)
-
-    if VISUALIZE:
-        obj_dv = dv(img_sp, label)
-        obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+        if VISUALIZE:
+            obj_dv = dv(img_sp, label)
+            obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+        else:
+            cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+            cv2.imshow("First Pass Clusters", img_sp)
+            cv2.waitKey(0)
 
 
 def test_real_data():
