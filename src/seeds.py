@@ -1,9 +1,10 @@
 import numpy as np
 import sys
+import random
 
 desired_width = 2900
 np.set_printoptions(threshold=sys.maxsize)
-DEBUG = 1
+DEBUG = 0
 
 
 class SEEDS:
@@ -37,7 +38,7 @@ class SEEDS:
             # 8 minute superpixel -> superpixel width = 16
             # 2, 4, 8, 16
             self.seed_width = 2
-            self.nr_levels = 4
+            self.nr_levels = 3
             self.nr_superpixels = 2880 / 16  # 180
         elif width == 1440:
             # 8 minute superpixel -> superpixel width = 8
@@ -48,9 +49,9 @@ class SEEDS:
         elif width == 17280:
             # 8 minute superpixel -> superpixel width = 96
             # 6, 12, 24, 48, 96
-            self.seed_width = 6
-            self.nr_levels = 5
-            self.nr_superpixels = 17280 / 96  # 180
+            self.seed_width = 12
+            self.nr_levels = 3
+            self.nr_superpixels = 17280 / 48  # 180
 
         self.min_nr_sublabels = 1
 
@@ -111,10 +112,12 @@ class SEEDS:
             for row in self.block_size:
                 print("\t\t", len(row), end=' ')
 
-        print("\n[SEED] initialize: Initialization Done")
+            print("\n[SEED] initialize: Initialization Done")
 
     def assign_labels(self):
-        print("[SEEDS] assign_labels: assigning labels and parents")
+        if DEBUG:
+            print("[SEEDS] assign_labels: assigning labels and parents")
+
         for level in range(0, self.nr_levels):
             num_blocks = int(self.width / (self.seed_width * 2 ** level))  # nr_seeds
             step_w = int(self.seed_width * 2 ** level)
@@ -134,22 +137,17 @@ class SEEDS:
                 if level > 0:
                     self.parents[level - 1][self.labels[level - 1][w]] = self.labels[level][w]
 
-        if not True:
-            print("\n\tLabels")
-            for level in range(self.nr_levels):
-                print("\tlevel: ", level)
-                print("\t\t", self.labels[level])
-
-            print("\n\tParents")
-            for level in range(self.nr_levels):
-                print("\tlevel: ", level)
-                print("\t\t", self.parents[level])
-        print("[SEEDS] assign_labels: labels and parents assigned")
+        if DEBUG:
+            print("[SEEDS] assign_labels: labels and parents assigned")
 
     # TODO
     # modify according to the actual features
     def calc_histogram_bin(self, routine):
         self.bin_index = routine
+
+    def delete_element(self, level, label, w):
+        self.histogram[level][label][self.bin_index[w]] -= 1
+        self.block_size[level][label] -= 1
 
     def add_element(self, level, label, w):
         self.histogram[level][label][self.bin_index[w]] += 1
@@ -158,7 +156,8 @@ class SEEDS:
     def add_block(self, level, parent_label, child_level, child_label):
         self.parents[child_level][child_label] = parent_label
         # child_level = level - 1
-        self.histogram[level][parent_label] += self.histogram[child_level][child_label]
+        self.histogram[level][parent_label] = self.histogram[level][parent_label] + self.histogram[child_level][
+            child_label]
         self.block_size[level][parent_label] += self.block_size[child_level][child_label]
         self.nr_partitions[level][parent_label] += 1
 
@@ -172,60 +171,40 @@ class SEEDS:
             until_level = self.nr_levels  # -1
 
         # clear all histograms
-        print("[SEEDS] compute_histograms: Clearing all histograms")
+        if DEBUG:
+            print("[SEEDS] compute_histograms: Clearing all histograms")
         for level in range(self.nr_levels):
             for label in range(self.nr_labels[level]):
                 self.histogram[level][label] = np.zeros(self.histogram_size, dtype=int)
             self.block_size[level] = [0] * self.nr_labels[level]
 
-        print("[SEEDS] compute_histogram: building level0 histograms")
+        if DEBUG:
+            print("[SEEDS] compute_histogram: building level0 histograms")
         # build histograms on the first level by adding the elements to the blocks at element level
         for w in range(0, self.width):
             self.add_element(0, self.labels[0][w], w)
 
-        if False:
-            print("\tHistograms: Level 0")
-            for label in range(self.nr_labels[0]):
-                print("\t\tLabel:", label, ", Hist:", self.histogram[0][label])
-
-        print("[SEEDS] compute_histogram: building higher level histograms")
+        if DEBUG:
+            print("[SEEDS] compute_histogram: building higher level histograms")
         for level in range(1, until_level):
             for label in range(self.nr_labels[level - 1]):
                 self.add_block(level, self.parents[level - 1][label], level - 1, label)
 
-            if False:
-                print("\tHistograms: Level", level)
-                for label in range(self.nr_labels[level]):
-                    print("\t\tLabel:", label, ", Hist:", self.histogram[level][label])
-                input()
-
-        if False:
-            print("\tHistograms")
-            for level in range(self.nr_levels):
-                print("\tlevel: ", level)
-                for i in range(5):
-                    label = np.random.randint(self.nr_labels[level], size=1)
-                    print("\t\tLabel: ", label[0], ", histogram: ", self.histogram[level][label[0]])
-
-            print("\n\tBlock Sizes")
-            for level in range(self.nr_levels):
-                print("\tlevel: ", level)
-                print("\t\t", self.block_size[level])
-
-            print("\n\tnr_partitions")
-            for level in range(self.nr_levels):
-                print("\tlevel: ", level)
-                print("\t\t", self.nr_partitions[level])
-
-        print("[SEEDS] compute_histogram: histograms build")
+        if DEBUG:
+            print("[SEEDS] compute_histogram: histograms build")
 
     def delete_block(self, top_level, plabel, level, label):
         self.parents[level][label] = -1
-        self.histogram[top_level][plabel] -= self.histogram[level][label]
+        self.histogram[top_level][plabel] = self.histogram[top_level][plabel] - self.histogram[level][label]
         self.block_size[top_level][plabel] -= self.block_size[level][label]
         self.nr_partitions[top_level][plabel] -= 1
         # if DEBUG:
         #     print(self.block_size[top_level][plabel])
+
+    def probability(self, histbin, label1, label2):
+        p_l1 = self.histogram[self.top_level][label1][histbin] / self.block_size[self.top_level][label1]
+        p_l2 = self.histogram[self.top_level][label2][histbin] / self.block_size[self.top_level][label2]
+        return p_l2 > p_l1
 
     def intersection(self, level1, label1, level2, label2):
         sum1 = 0
@@ -305,6 +284,29 @@ class SEEDS:
 
         self.update_labels(level)
 
+    def update_element(self, level, label_new, w):
+        label_old = self.labels[level][w]
+        self.delete_element(level, label_old, w)
+        self.add_element(level, label_new, w)
+        self.labels[level][w] = label_new
+
+    def update_pixel(self):
+        updated = [None] * self.width
+        w = 0
+        while w < self.width - 1:
+            label1 = self.labels[self.top_level][w]
+            label2 = self.labels[self.top_level][w + 1]
+
+            if label1 != label2:
+                if self.probability(self.bin_index[w], label1, label2) and updated[w] is None:
+                    self.update_element(self.top_level, label2, w)
+                    updated[w] = True
+                    w -= 2
+                elif self.probability(self.bin_index[w + 1], label2, label1) and updated[w + 1] is None:
+                    self.update_element(self.top_level, label1, w + 1)
+                    updated[w + 1] = True
+            w += 1
+
     def go_down_one_level(self):
         old_level = self.curr_level
         new_level = self.curr_level - 1
@@ -328,26 +330,29 @@ class SEEDS:
         # start with one level lower than the top level
         # because top level is the final clusters
 
-        print("[SEEDS] iterate: starting block updates")
+        if DEBUG:
+            print("[SEEDS] iterate: starting block updates")
 
         self.curr_level = self.nr_levels - 2  # self.top_level - 1
 
         # block update
         while self.curr_level >= 0:
-            print("[SEEDS] iterate: updating level ", self.curr_level)
+            if DEBUG:
+                print("[SEEDS] iterate: updating level ", self.curr_level)
             self.update_blocks(self.curr_level)
             self.curr_level = self.go_down_one_level()
 
             if DEBUG:
-                # print("\n\tBlock Sizes")
-                # for level in range(self.nr_levels):
-                #     print("\tlevel: ", level)
-                #     print("\t\t", self.block_size[level])
-                #
-                # print("\n\tnr_partitions")
-                # for level in range(self.nr_levels):
-                #     print("\tlevel: ", level)
-                #     print("\t\t", self.nr_partitions[level])
+                print("[SEEDS] iterate")
+                print("\n\tBlock Sizes")
+                for level in range(self.nr_levels):
+                    print("\tlevel: ", level)
+                    print("\t\t", self.block_size[level])
+
+                print("\n\tnr_partitions")
+                for level in range(self.nr_levels):
+                    print("\tlevel: ", level)
+                    print("\t\t", self.nr_partitions[level])
 
                 print("\n\tLabels")
                 for level in range(self.nr_levels):
@@ -359,18 +364,32 @@ class SEEDS:
                     print("\tlevel: ", level)
                     print("\t\t", self.parents[level])
 
+        # update individual elements
+        self.update_pixel()
+        # self.update_pixel()
+        # self.update_pixel()
+
 
 if __name__ == '__main__':
     seedsobj = SEEDS()
-    seedsobj.initialize(2880, 30, 5)
+    seedsobj.initialize(17280, 5, 7)
     seedsobj.assign_labels()
 
     # generate a routine thing
-    routine = np.zeros(2880, dtype=int)
-    routine[576:1152] = np.random.randint(2, size=576)
-    routine[1152:1728] = np.random.randint(3, size=576)
-    routine[1728:2304] = np.random.randint(4, size=576)
-    routine[2304:2880] = np.random.randint(5, size=576)
+    # routine = np.zeros(2880, dtype=int)
+    # routine[576:1152] = np.random.randint(2, size=576)
+    # routine[1152:1728] = np.random.randint(3, size=576)
+    # routine[1728:2304] = np.random.randint(4, size=576)
+    # routine[2304:2880] = np.random.randint(5, size=576)
+    routine = np.zeros(17280, dtype=int)
+    routine[2160:4320] = np.random.randint(2, size=2160)
+    routine[4320:6480] = np.random.randint(4, size=2160)
+    routine[6480:8640] = np.random.randint(2, size=2160)
+    routine[8640:10800] = np.random.randint(1, 4, size=2160)
+    routine[10800:12960] = np.random.randint(4, 6, size=2160)
+    routine[12960:15120] = np.array(random.choices([3, 5], k=2160))
+    routine[15120:] = np.random.randint(4, 7, size=2160)
+
     # routine[576:1152] = np.ones(576)
     # routine[1152:1728] = np.array([2]*576)
     # routine[1728:2304] = np.array([3]*576)
@@ -385,9 +404,9 @@ if __name__ == '__main__':
     label_routine = {}
     j = 0
     for i in range(len(seedsobj.labels[-1])):
-        if i == len(seedsobj.labels[-1]) - 1 or seedsobj.labels[-1][i] != seedsobj.labels[-1][i+1]:
-            label_routine[seedsobj.labels[-1][i]] = routine[j:i+1]
-            j = i+1
+        if i == len(seedsobj.labels[-1]) - 1 or seedsobj.labels[-1][i] != seedsobj.labels[-1][i + 1]:
+            label_routine[seedsobj.labels[-1][i]] = routine[j:i + 1]
+            j = i + 1
 
     for l in label_routine:
         print(l, label_routine[l])

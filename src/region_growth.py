@@ -1,10 +1,32 @@
 from connected_components import UnionFind
 import numpy as np
+import math
+
+DEBUG = 0
 
 
 class RegionGrowth:
     def __init__(self):
         self.edge = {'a': 0, 'b': 0, 'w': 0}
+
+    @staticmethod
+    def entropy(hist):
+        total = sum(hist)
+        ent = 0  # -p*log(p) so ent = ent - p*log(p)
+        for i in hist:
+            if i != 0:
+                ent = ent - math.log(i/total)*i/total
+
+        return ent
+
+    # entropy gain on merging the two histograms
+    # gain = entropy before - entropy after
+    def entropy_gain(self, hist1, hist2):
+        ent_b = self.entropy(hist1)
+        ent_b += self.entropy(hist2)
+
+        ent_a = self.entropy(hist1 + hist2)
+        return ent_b - ent_a
 
     @staticmethod
     def hist_inter_union(hist1, hist2):
@@ -76,7 +98,31 @@ class RegionGrowth:
             start_time_diff = abs(c1["stime"] - c2["stime"]) / (24*60*60)
             return (1-start_time_diff)*pahcs * dhcs
 
-    def region_growth(self, cluster, cluster_coarse, cluster_feat, thresh=0.6, measure="hist_inter_normalized"):
+    def cluster_sameday_activity(self, cluster_feat):
+        if DEBUG:
+            print("[RegionGrowth] cluster_sameday_activity: ")
+
+        cluster_old_new = dict()
+        cluster_new_old = dict()
+        cluster_new_hist = dict()
+
+        cluster_new_old[0] = [0]
+        cluster_old_new[0] = 0
+        cluster_new_hist[0] = cluster_feat[0]["loc_array"]
+
+        for i in range(1, len(cluster_feat)):
+            # if entropy +ive, merge else don't merge
+            if self.entropy_gain(cluster_feat[i]["loc_array"], cluster_new_hist[cluster_old_new[i-1]]) >= 0:
+                cluster_old_new[i] = cluster_old_new[i-1]
+                cluster_new_old[cluster_old_new[i]].append(i)
+                cluster_new_hist[cluster_old_new[i]] = cluster_new_hist[cluster_old_new[i]] + cluster_feat[i]["loc_array"]
+            else:
+                cluster_old_new[i] = len(cluster_new_old)
+                cluster_new_old[cluster_old_new[i]] = [i]
+                cluster_new_hist[cluster_old_new[i]] = cluster_feat[i]["loc_array"]
+        return cluster_new_old
+
+    def region_growth(self, cluster_pixels, cluster_coarse, cluster_feat, thresh=0.6, measure="hist_inter_normalized"):
         edges = []
         num_edges = 0
         num_clusters = len(cluster_feat)
@@ -121,27 +167,28 @@ class RegionGrowth:
             #     success = True
 
         # collect information for clusters
-        cluster_pixels = {}  # cluster_id: pixels for image
-        new_cluster_course = {}
-        cluster_elements = {}  # cluster_id: previous merging cluster ids
-        old_new_cluster = {}  # cluster ID. cid from union-find are not true ids
+        cluster_new_pixels = {}  # new cluster_id: pixels for image
+        new_cluster_course = {}  # new cluster_id: original clusters
+        cluster_new_old = {}  # new cluster_id: previous step cluster ids
+        cluster_uf_new = {}  # cluster ID: union-find ids to actual new ids
         cluster_id = 1
 
-        for c in cluster:
+        # c is the original cluster
+        for c in cluster_pixels:
             c_id = obj_uf.find(c - 1)
 
             # if the cluster has not been allotted an id, alot it
-            if c_id not in old_new_cluster:
-                old_new_cluster[c_id] = cluster_id
+            if c_id not in cluster_uf_new:
+                cluster_uf_new[c_id] = cluster_id
                 cluster_id = cluster_id + 1
 
-            if old_new_cluster[c_id] not in cluster_elements:
-                cluster_elements[old_new_cluster[c_id]] = []
-                cluster_pixels[old_new_cluster[c_id]] = []
-                new_cluster_course[old_new_cluster[c_id]] = []
+            if cluster_uf_new[c_id] not in cluster_new_old:
+                cluster_new_old[cluster_uf_new[c_id]] = []
+                cluster_new_pixels[cluster_uf_new[c_id]] = []
+                new_cluster_course[cluster_uf_new[c_id]] = []
 
-            cluster_pixels[old_new_cluster[c_id]] += cluster[c]
-            new_cluster_course[old_new_cluster[c_id]] += cluster_coarse[c]
-            cluster_elements[old_new_cluster[c_id]].append(c)
+            cluster_new_pixels[cluster_uf_new[c_id]] += cluster_pixels[c]
+            new_cluster_course[cluster_uf_new[c_id]] += cluster_coarse[c]
+            cluster_new_old[cluster_uf_new[c_id]].append(c)
 
-        return cluster_elements, cluster_pixels, new_cluster_course, success
+        return cluster_new_old, cluster_new_pixels, new_cluster_course, success
