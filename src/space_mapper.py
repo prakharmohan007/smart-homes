@@ -19,10 +19,23 @@ class SpaceMapper:
         self.house_center = (0, 0)
         self.house_map = np.array([])
         print("[SpaceMapper] init: start parsing XML file.....")
-        self.parseHouseMap()
+        if subject_id==2:
+            self.parseHouseMap2()
+        elif subject_id == 1:
+            self.parseHouseMap1()
         print("[SpaceMapper] init: Mapping complete!")
 
-    def parseHouseMap(self):
+    def parseHouseMap1(self):
+        subject_name = "subject"+str(self.subject_id)
+        num_rooms = 0
+        for child in self.root[self.subject_id - 1].find("rooms"):
+            self.space_ids[child.tag] = num_rooms
+            self.ids_space[num_rooms] = child.tag
+            # self.space_type.add(child.attrib.get("type"))
+            self.space_type[child.tag] = child.attrib.get("type")
+            num_rooms += 1
+
+    def parseHouseMap2(self):
         subject_name = "subject"+str(self.subject_id)
         self.house_width = int(self.root[self.subject_id-1].find("width").text)
         self.house_height = int(self.root[self.subject_id - 1].find("height").text)

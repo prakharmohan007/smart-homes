@@ -295,9 +295,9 @@ def real_dataset():
     print("prepare data")
     # obj_data = TempDataProcessing("../data/180724_180810_mod.csv")
     # obj_data = TempDataProcessing("../data/toy_example.csv")
-    obj_data = ReadData(subject_id=2,
-                        num_days=15,
-                        dir_name="../data/experimental_data/Subject_2/processed_data")
+    obj_data = ReadData(subject_id=1,
+                        num_days=46,
+                        dir_name="../data/experimental_data/Subject_1/processed_data")
     # file_name="xandem_2018-12-02.log")
     # print("number of days:", len(obj_data.image))
     # print("number of intervals: ", len(obj_data.image[0]))

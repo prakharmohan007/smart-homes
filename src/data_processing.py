@@ -432,10 +432,10 @@ class ReadData:
                 img.append(routine)
 
         except IOError as err:
-            print("[DataPreparation] read_files: error reading log files. Error ", err)
+            print("[ReadData] read_files: error reading log files. Error ", err)
             raise
         except Exception as err:
-            print("[DataPreparation] read_files: Error ", err)
+            print("[ReadData] read_files: Error ", err)
             raise
 
         return img
