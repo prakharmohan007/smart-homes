@@ -262,7 +262,6 @@ class GenerateRealDataCluster:
         c_list = list()
         c_id = 0
         start_cell = 0
-
         obj_feat = Features(time_bins=0, act_bins=self.num_act, type_bins=self.num_type, scale=self.scale)
         temp = dict()
         temp["loc"] = set()
