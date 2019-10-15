@@ -89,9 +89,10 @@ class ReadSyntheticData:
 # feature convention: dictionary
 # numpy arrays and integers and sets
 class Features:
-    def __init__(self, time_bins, act_bins, scale):
+    def __init__(self, time_bins, act_bins, type_bins, scale):
         self.time_bins = time_bins
         self.act_bins = act_bins
+        self.type_bins = type_bins
         self.scale = scale
 
     def init_null_features(self):
@@ -100,6 +101,7 @@ class Features:
         features["loc"] = set()
         features["loc_type"] = set()
         features["loc_array"] = np.array([0] * self.act_bins)
+        features["type_array"] = np.array([0] * self.type_bins)
         features["rood_idx"] = 0
         features["stime"] = 0
         features["time_hist"] = np.zeros(self.time_bins, dtype=int)
@@ -110,7 +112,7 @@ class Features:
         return features
 
     # Features for clusters
-    def init_features(self, loc, loc_type, stime, duration, loc_array, prev_act):
+    def init_features(self, loc, loc_type, stime, duration, loc_array, type_array, prev_act):
         features = self.init_null_features()
         features["num_clusters"] = 1
 
@@ -133,6 +135,7 @@ class Features:
         features["dur_hist"][0:int(duration / self.scale)] = 1
 
         features["loc_array"] = loc_array.copy()
+        features["type_array"] = type_array.copy()
 
         if prev_act is not None:
             features["prev_act_bag"] = prev_act.copy()
@@ -157,6 +160,7 @@ class Features:
         feat1["dur_hist"] = feat1["dur_hist"] + feat2["dur_hist"]
 
         feat1["loc_array"] = feat1["loc_array"] + feat2["loc_array"]
+        feat1["type_array"] = feat1["type_array"] + feat2["type_array"]
 
         if feat1["prev_act_bag"] is None:
             feat1["prev_act_bag"] = feat2["prev_act_bag"].copy()
@@ -240,9 +244,10 @@ class GenerateSyntheticCluster:
 
 
 class GenerateRealDataCluster:
-    def __init__(self, num_act, scale=5):
+    def __init__(self, num_act, num_type, scale=5):
         self.scale = scale
         self.num_act = num_act
+        self.num_type = num_type
 
     # the function takes generates clusters from a list of consecutive activities
     # Parameters:
@@ -258,17 +263,18 @@ class GenerateRealDataCluster:
         c_id = 0
         start_cell = 0
 
-        obj_feat = Features(time_bins=0, act_bins=self.num_act, scale=self.scale)
+        obj_feat = Features(time_bins=0, act_bins=self.num_act, type_bins=self.num_type, scale=self.scale)
         temp = dict()
         temp["loc"] = set()
         temp["loc_type"] = set()
         temp["loc_array"] = np.array([0] * self.num_act)
+        temp["type_array"] = np.array([0] * self.num_type)
 
         for a in range(len(activity)):
-
             temp["loc"] = temp["loc"].union(activity[a]["loc"])
             temp["loc_type"] = temp["loc_type"].union(activity[a]["loc_type"])
             temp["loc_array"] = np.add(temp["loc_array"], activity[a]["loc_array"])
+            temp["type_array"] = np.add(temp["type_array"], activity[a]["type_array"])
             c_list.append((day-1, a))
             if a == len(activity)-1 or cluster_labels[a] != cluster_labels[a+1]:
                 # make a cluster
@@ -279,13 +285,14 @@ class GenerateRealDataCluster:
                 features["loc"] = temp["loc"].copy()
                 features["loc_type"] = temp["loc_type"].copy()
                 features["loc_array"] = temp["loc_array"].copy()
-
+                features["type_array"] = temp["type_array"].copy()
                 cluster_feat[c_id] = features
                 cluster_pixels[c_id] = c_list.copy()
 
                 temp["loc"] = set()
                 temp["loc_type"] = set()
                 temp["loc_array"] = np.array([0] * self.num_act)
+                temp["type_array"] = np.array([0] * self.num_type)
                 c_list = []
 
                 start_cell = a+1
@@ -298,7 +305,7 @@ class GenerateRealDataCluster:
         new_cluster_pixel = dict()
 
         time_bins = int(24*60*60/self.scale)
-        feat_obj = Features(time_bins, self.num_act, self.scale)
+        feat_obj = Features(time_bins, self.num_act, self.num_type, self.scale)
         prev_act = None
         for new in cluster_new_old:
             temp = feat_obj.init_null_features()
@@ -310,11 +317,13 @@ class GenerateRealDataCluster:
                 temp["loc"] = temp["loc"].union(old_cluster_feat[subc]["loc"])
                 temp["loc_type"] = temp["loc_type"].union(old_cluster_feat[subc]["loc_type"])
                 temp["loc_array"] = temp["loc_array"] + old_cluster_feat[subc]["loc_array"]
+                temp["type_array"] = temp["type_array"] + old_cluster_feat[subc]["type_array"]
 
                 new_cluster_pixel[new] += old_cluster_pixel[subc]
 
-            new_cluster_feat[new] = feat_obj.init_features(temp["loc"], temp["loc_type"], temp["stime"],
-                                                           temp["duration"], temp["loc_array"], prev_act)
+            new_cluster_feat[new] = feat_obj.init_features(temp["loc"], temp["loc_type"],
+                                                           temp["stime"], temp["duration"],
+                                                           temp["loc_array"], temp["type_array"], prev_act)
             prev_act = new_cluster_feat[new]["prev_act_bag"] + new_cluster_feat[new]["loc_array"]
             del temp
         return new_cluster_feat, new_cluster_pixel
@@ -322,7 +331,7 @@ class GenerateRealDataCluster:
     def merge_cluster_features(self, orig_clusters_features, cluster_new_old):
         cluster_feat = dict()
         time_bins = int(24 * 60 * 60 / self.scale)
-        obj_feat = Features(time_bins=time_bins, act_bins=self.num_act, scale=self.scale)
+        obj_feat = Features(time_bins=time_bins, act_bins=self.num_act, type_bins=self.num_type, scale=self.scale)
         for new_c in cluster_new_old:
             cluster_feat[new_c] = obj_feat.init_null_features()
             for orig_c in cluster_new_old[new_c]:
@@ -345,13 +354,13 @@ class ReadData:
         self.subject_info = SpaceMapper(subject_id=subject_id)
         print("[DataPreparation] init: Object initialized for subject ", subject_id)
         print("[DataPreparation] init: Creating data for subject ", subject_id)
-        self.image = self.readFiles()
+        self.image = self.readFiles2()
 
     def get_num_spaces(self):
         return len(self.subject_info.space_ids)
 
     def get_num_space_types(self):
-        return len(self.subject_info.space_type)
+        return len(self.subject_info.type_space)
 
     def readFiles(self):
         print("[ReadData] readFiles: Preparing data for subject ", self.subject_id, ".....")
@@ -370,6 +379,9 @@ class ReadData:
         log_files.sort()
 
         obj_feat = Features(time_bins=0, act_bins=len(self.subject_info.space_ids), scale=self.scale)
+
+        if self.num_days == -1:
+            self.num_days = len(log_files)
 
         try:
             for file in log_files[:self.num_days]:
@@ -438,18 +450,107 @@ class ReadData:
             print("[ReadData] read_files: Error ", err)
             raise
 
-        return img
+        if len(img) == 1:
+            return img[0]
+        else:
+            return img
+
+    def readFiles2(self):
+        print("[ReadData] readFiles: Preparing data for subject ", self.subject_id, ".....")
+        img = []
+        print("[ReadData] readFiles: reading log files of data")
+        if self.file_name is None:
+            log_files = glob.glob(self.dir_name + "/*.log")
+        else:
+            log_files = [self.dir_name + "/" + self.file_name]
+
+        if len(log_files) == 0:
+            print("[ReadData] readFiles: Error - No log files found in the folder ", self.dir_name)
+            exit(-1)
+        log_files.sort()
+
+        obj_feat = Features(time_bins=0,
+                            act_bins=len(self.subject_info.space_ids),
+                            type_bins=len(self.subject_info.type_space),
+                            scale=self.scale)
+
+        if self.num_days == -1:
+            self.num_days = len(log_files)
+
+        try:
+            for file in log_files[:self.num_days]:
+                print("[ReadData] readFiles: file read -> ", file)
+
+                # initialize routine for current day
+                routine = [None]*1440
+
+                # open routine file
+                with open(file, 'r') as f_read:
+                    data = f_read.readlines()
+
+                # delete the first line (header line)
+                del data[0]
+                sample_num = -1
+                prev_min = 0
+                container = dict()
+
+                # iterate through all the files, each file is a record of a day
+                for line in data:
+                    sample_num += 1
+
+                    # line: Time stamp (MM-DD-YYYY hh:mm:ss), x_coord, y_coord, is_motion, motion_score, space_id(char)
+                    sample = re.split(',|\n', line)
+                    # print(sample)
+                    time_split = re.split(' |:', sample[1])
+                    minute = int(time_split[1]) * 60 + int(time_split[2])
+                    # print(minute)
+                    if prev_min != minute or sample_num == len(data) - 1:
+                        curr_info = dict()
+                        curr_info["loc"] = max(container, key=container.get)
+                        # print(curr_info["loc"])
+                        sample_feat = obj_feat.init_null_features()
+                        sample_feat["num_clusters"] = 1
+                        sample_feat["loc"].add(curr_info["loc"])
+                        sample_feat["loc_type"].add(self.subject_info.space_type[curr_info["loc"]])
+                        sample_feat["loc_array"][self.subject_info.space_ids[curr_info["loc"]]] = 1
+                        sample_feat["type_array"][self.subject_info.space_type[curr_info["loc"]]] = 1
+                        sample_feat["room_idx"] = self.subject_info.space_ids[curr_info["loc"]]
+                        routine[prev_min] = sample_feat
+                        prev_min = minute
+                        container = dict()
+
+                    container[sample[-2]] = container.get(sample[-2], 0) + 1
+                    # print(container)
+
+                # check for missing cells
+                for c in range(1440):
+                    if routine[c] is None:
+                        routine[c] = routine[c - 1]
+
+                img.append(routine)
+
+        except IOError as err:
+            print("[ReadData] read_files: error reading log files. Error ", err)
+            raise
+        except Exception as err:
+            print("[ReadData] read_files: Error ", err)
+            raise
+
+        if len(img) == 1:
+            return img[0]
+        else:
+            return img
 
 
 if __name__ == "__main__":
     # obj = GenerateSyntheticCluster("ADL1", "../data/synthetic_data/level2/parsed_data/synt_data_lvl2_days30_sd5_4.csv")
     # obj.get_cluster_features()
 
-    obj = ReadData()
+    obj = ReadData(subject_id=2, num_days=-1, dir_name="../data/real_data/Subject_2/")
     print("num days:", len(obj.image))
     print("num time stamps:", len(obj.image[0]))
 
-    print(obj.image[0][10000])
+    print(obj.image[0])
 
     # obj_xml = SyntheticDataXML("ADL1")
     # print(obj_xml.space_id)

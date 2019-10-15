@@ -13,9 +13,9 @@ class SpaceMapper:
         self.house_width = 0
         self.house_height = 0
         self.space_ids = {}
-        self.space_type = {}
-        # self.space_type = set()
         self.ids_space = {}
+        self.space_type = {}
+        self.type_space = {}
         self.house_center = (0, 0)
         self.house_map = np.array([])
         print("[SpaceMapper] init: start parsing XML file.....")
@@ -32,7 +32,11 @@ class SpaceMapper:
             self.space_ids[child.tag] = num_rooms
             self.ids_space[num_rooms] = child.tag
             # self.space_type.add(child.attrib.get("type"))
-            self.space_type[child.tag] = child.attrib.get("type")
+            temp = int(child.attrib.get("type"))
+            self.space_type[child.tag] = temp
+            if temp not in self.type_space:
+                self.type_space[temp] = set()
+            self.type_space[temp].add(child.tag)
             num_rooms += 1
 
     def parseHouseMap2(self):

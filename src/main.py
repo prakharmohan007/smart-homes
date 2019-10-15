@@ -13,7 +13,7 @@ from seeds import SEEDS
 # from data_processing import TempDataProcessing, ClusterProcessing, DataPreparation
 # from region_growth import RegionGrowth
 
-SAVE_IMAGE = 1
+SAVE_IMAGE = 0
 SHOW_IMAGE = 1
 VISUALIZE = 1
 DEBUG = 0
@@ -288,16 +288,16 @@ def real_dataset():
     print("********************************************************************************")
     print("Real Data")
     thresh = 0.9
-    scale = 5
-    scale_down = 30
+    scale = 60
+    scale_down = 60
 
     print("********************************************************************************")
     print("prepare data")
     # obj_data = TempDataProcessing("../data/180724_180810_mod.csv")
     # obj_data = TempDataProcessing("../data/toy_example.csv")
     obj_data = ReadData(subject_id=1,
-                        num_days=46,
-                        dir_name="../data/experimental_data/Subject_1/processed_data")
+                        num_days=15,
+                        dir_name="../data/real_data/Subject_1/")
     # file_name="xandem_2018-12-02.log")
     # print("number of days:", len(obj_data.image))
     # print("number of intervals: ", len(obj_data.image[0]))
@@ -306,14 +306,15 @@ def real_dataset():
     #     simplejson.dump(obj_data.img, image_log)
     data = obj_data.image.copy()
     num_activities = obj_data.get_num_spaces()
+    num_types = obj_data.get_num_space_types()
     del obj_data
 
-    filtered_data = []
-    for day in data:
-        filtered = median_filtering(day)
-        if scale_down != scale:
-            filtered = scale_data(filtered, int(scale_down/scale))
-        filtered_data.append(filtered)
+    filtered_data = data.copy()
+    # for day in data:
+    #     filtered = median_filtering(day)
+    #     if scale_down != scale:
+    #         filtered = scale_data(filtered, int(scale_down/scale))
+    #     filtered_data.append(filtered)
 
     # process individual days
     if DEBUG:
@@ -323,9 +324,10 @@ def real_dataset():
     cluster_pixel = dict()
     c_id = 1
     rgobj = RegionGrowth()
-    realgenobj = GenerateRealDataCluster(num_act=num_activities, scale=5)
+    realgenobj = GenerateRealDataCluster(num_act=num_activities, num_type=num_types, scale=scale)
     for routine in filtered_data:
         # day is a 1 day filtered routine
+        print(len(routine))
         num_days += 1
         seedroutine = [None] * len(routine)
         routine_loc = [None] * len(routine)
@@ -460,6 +462,173 @@ def real_dataset():
             cv2.waitKey(0)
 
 
+def real_data_complete():
+    scale = 60
+    scale_down = 60
+
+    for subject_id in range(1, 3):
+        target_dir = "../data/real_data/clustered_images/"
+        source_dir = "../data/real_data/Subject_" + str(subject_id)
+        obj_data = ReadData(subject_id=subject_id,
+                            num_days=-1,
+                            dir_name=source_dir)
+        data = obj_data.image.copy()
+        num_activities = obj_data.get_num_spaces()
+        del obj_data
+
+        filtered_data = data.copy()
+        # for day in data:
+        #     filtered = median_filtering(day)
+        #     if scale_down != scale:
+        #         filtered = scale_data(filtered, int(scale_down / scale))
+        #     filtered_data.append(filtered)
+
+        # data for every 14 days
+        start_day = 0
+        end_day = 14
+        while end_day <= len(filtered_data):
+            print("Day:", start_day+1, "to Day:", end_day)
+            routine14days = filtered_data[start_day:end_day]
+            num_days = 0
+            cluster_feat = dict()
+            cluster_pixel = dict()
+            c_id = 1
+            rgobj = RegionGrowth()
+            realgenobj = GenerateRealDataCluster(num_act=num_activities, scale=5)
+
+            # single day processing
+            for routine in routine14days:
+                # day is a 1 day filtered routine
+                num_days += 1
+                seedroutine = [None] * len(routine)
+                routine_loc = [None] * len(routine)
+                for i in range(len(routine)):
+                    seedroutine[i] = routine[i]["room_idx"]
+                    routine_loc[i] = list(routine[i]["loc"])[0]
+
+                seedsobj = SEEDS()
+                seedsobj.initialize(width=len(routine), scale=scale_down, num_locs=num_activities)
+                seedsobj.assign_labels()
+                seedsobj.compute_histograms(seedroutine)
+                seedsobj.iterate()
+
+                seedlabels = seedsobj.labels[-1].copy()
+                del seedsobj
+                # realgenobj = GenerateRealDataCluster(num_act=num_activities, scale=5)
+                cf, cp = realgenobj.make_single_day_clusters(routine, seedlabels, num_days)
+
+                if DEBUG:
+                    seeds_loc = dict()
+                    j = 0
+                    for i in range(len(seedlabels)):
+                        if i == len(seedlabels) - 1 or seedlabels[i] != seedlabels[i + 1]:
+                            seeds_loc[seedlabels[i]] = routine_loc[j:i + 1]
+                            print(seedlabels[i], routine_loc[j:i + 1])
+                            # print(seeds_loc[seedlabels[i]])
+                            j = i + 1
+
+                    for c in cf:
+                        print(c, cf[c]["loc_array"])
+
+                # merge adjacent single day similar activities
+                cluster_new_old = rgobj.cluster_sameday_activity(cf)
+                cf, cp = realgenobj.merge_sameday_cluster_features(cluster_new_old, cf, cp)
+
+                for c in cf:
+                    cluster_feat[c_id] = cf[c]
+                    cluster_pixel[c_id] = cp[c]
+                    c_id += 1
+
+            # visual results
+            num_intervals = int((24 * 60 * 60) / scale_down)
+            dims = (num_days, num_intervals, 3)
+
+            print("num days: ", num_days)
+            print("Initial number of clusters: ", len(cluster_feat))
+            init_cluster_feat = cluster_feat.copy()
+            # make cluster course dict
+            cluster_coarse = dict()
+            for c in cluster_feat:
+                cluster_coarse[c] = [c]
+
+            # if SHOW_IMAGE:
+            #     if VISUALIZE:
+            #         obj_dv = dv(img_fp, label)
+            #         obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+            #     else:
+            #         cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+            #         cv2.imshow("First Pass Clusters", img_fp)
+            #         cv2.waitKey(0)
+
+            print("********************************************************************************")
+            print("performing Hierarchical merging.....")
+            print(" TIME-DURATION HISTOGRAM COSINE ")
+
+            success = True
+            while success:
+                print("number of clusters before merging: ", len(cluster_pixel))
+                cluster_new_old, cluster_pixel, cluster_coarse, success = rgobj.region_growth(cluster_pixel,
+                                                                                              cluster_coarse,
+                                                                                              cluster_feat,
+                                                                                              thresh=0.7,
+                                                                                              measure="timedur_hist_cosine_sim")
+                print("number of clusters after merging: ", len(cluster_pixel))
+                print("Preparing features for new clusters")
+                cluster_feat = realgenobj.merge_cluster_features(orig_clusters_features=cluster_feat,
+                                                                 cluster_new_old=cluster_new_old)
+                if len(cluster_pixel) != len(cluster_feat):
+                    print("number of clusters in cluster_pixel and cluster_feat are different")
+
+            # print("preparing visual results for clusters.....")
+            # img_sp, label = plot_cluster(cluster_pixel, dims)
+            # if SHOW_IMAGE:
+            #     if VISUALIZE:
+            #         obj_dv = dv(img_sp, label)
+            #         obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+            #     else:
+            #         cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+            #         cv2.imshow("First Pass Clusters", img_sp)
+            #         cv2.waitKey(0)
+
+            success = True
+            print(" START TIME - DURATION and PREV ACTIVITY HISTOGRAM COSINE ")
+            while success:
+                print("number of clusters before merging: ", len(cluster_pixel))
+                cluster_new_old, cluster_pixel, cluster_coarse, success = rgobj.region_growth(cluster_pixel,
+                                                                                              cluster_coarse,
+                                                                                              cluster_feat,
+                                                                                              thresh=0.9,
+                                                                                              measure="durprevact_hist_cosine_sim")
+                print("number of clusters after merging: ", len(cluster_pixel))
+                print("Preparing features for new clusters")
+                cluster_feat = realgenobj.merge_cluster_features(orig_clusters_features=cluster_feat,
+                                                                 cluster_new_old=cluster_new_old)
+                if len(cluster_pixel) != len(cluster_feat):
+                    print("number of clusters in cluster_pixel and cluster_feat are different")
+
+                # img_sp, label_sp = plot_cluster(cluster_pixels, dims)
+                # obj_dv = dv(img_sp, label_sp)
+                # obj_dv.feature_comparison(clusters_feat)
+
+            print("preparing visual results for clusters.....")
+            img_sp, label = plot_cluster(cluster_pixel, dims)
+            if SHOW_IMAGE:
+                if VISUALIZE:
+                    obj_dv = dv(img_sp, label)
+                    obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+                else:
+                    cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+                    cv2.imshow("First Pass Clusters", img_sp)
+                    cv2.waitKey(0)
+
+            if SAVE_IMAGE:
+                filename = "Subject" + str(subject_id) + "_day" + str(start_day+1) + "-" + str(end_day) + ".png"
+                cv2.imwrite(target_dir + filename, img_sp)
+
+            start_day += 7
+            end_day += 7
+
+
 def test_real_data():
     # create dalaloader
     print("********************************************************************************")
@@ -472,9 +641,9 @@ def test_real_data():
     print("prepare data")
     # obj_data = TempDataProcessing("../data/180724_180810_mod.csv")
     # obj_data = TempDataProcessing("../data/toy_example.csv")
-    obj_data = ReadData(subject_id=2,
+    obj_data = ReadData(subject_id=1,
                         num_days=15,
-                        dir_name="../data/experimental_data/Subject_2/processed_data")
+                        dir_name="../data/real_data/Subject_2/processed_data")
     # file_name="xandem_2018-12-02.log")
     # print("number of days:", len(obj_data.image))
     # print("number of intervals: ", len(obj_data.image[0]))
@@ -555,6 +724,7 @@ def test_real_data():
 if __name__ == "__main__":
     # synthetic_dataset()
     real_dataset()
+    # real_data_complete()
     # test_real_data()
 
     exit(1)

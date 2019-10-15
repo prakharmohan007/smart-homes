@@ -4,14 +4,66 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-from data_processing import GenerateSyntheticCluster
+from data_processing import GenerateSyntheticCluster, ReadData, GenerateRealDataCluster
 from region_growth import RegionGrowth
 from data_visualization import DataVisualization as dv
+from seeds import SEEDS
 
-SAVE_IMAGE = 1
+SAVE_IMAGE = 0
 SHOW_IMAGE = 0
 VISUALIZE = 0
 
+
+def median_filtering(list1d, window_size=12):
+    container1 = dict()
+    container2 = dict()
+    filtered = list()
+    for i in range(len(list1d) + int(window_size / 2)):
+        if i < len(list1d):
+            if list(list1d[i]["loc"])[0] not in container1:
+                container1[list(list1d[i]["loc"])[0]] = 1
+                container2[list(list1d[i]["loc"])[0]] = list1d[i]
+            else:
+                container1[list(list1d[i]["loc"])[0]] += 1
+                container2[list(list1d[i]["loc"])[0]] = list1d[i]
+
+        if i >= window_size:
+            container1[list(list1d[i - window_size]["loc"])[0]] -= 1
+
+        if i >= int(window_size / 2):
+            max_act = max(container1, key=container1.get)
+            filtered.append(container2[max_act])
+
+    if len(filtered) != len(list1d):
+        print("median filtering: lengths different")
+        raise
+
+    return filtered
+
+
+def scale_data(list1d, scale=6):
+    container1 = dict()
+    container2 = dict()
+    scaled = list()
+    for i in range(len(list1d)):
+        if list(list1d[i]["loc"])[0] not in container1:
+            container1[list(list1d[i]["loc"])[0]] = 1
+            container2[list(list1d[i]["loc"])[0]] = list1d[i]
+        else:
+            container1[list(list1d[i]["loc"])[0]] += 1
+            container2[list(list1d[i]["loc"])[0]] = list1d[i]
+
+        if (i+1) % scale == 0:
+            max_act = max(container1, key=container1.get)
+            scaled.append(container2[max_act].copy())
+            container1 = dict()
+            container2 = dict()
+
+    if len(scaled) != int(len(list1d)/scale):
+        print("scale_data: lengths different")
+        raise
+
+    return scaled
 
 def data_scaling(data, interval):
     scaled_data = []
@@ -166,7 +218,7 @@ def total_MAE(cluster_feat, cluster_elements):
 def clustering(lvl, f_name):
     filepath = "../data/synthetic_data/level" + str(lvl) + "/parsed_data/" + f_name + ".csv"
     i_name = f_name + ".png"
-
+    scale = 30
     obj_data = GenerateSyntheticCluster(
         routine_type="ADL1",
         file_path=filepath,
@@ -262,7 +314,7 @@ def clustering(lvl, f_name):
     return len(cluster_pixels), variance, mae
 
 
-if __name__ == "__main__":
+def evaluate_synthetic_data():
     # create dataloader
     print("********************************************************************************")
     print("Hyperparameters")
@@ -332,3 +384,223 @@ if __name__ == "__main__":
         print("Graph: MAE-SD")
         print("MAE", mae_plot)
         plot_subgraphs(mae_plot, sd, prob, "Level "+str(lvl)+": MAE-SD", str(lvl), y_axis="MAE (scale=1000)")
+
+
+def evaluate_real_data():
+    scale = 60
+    scale_down = 60
+
+    num_clusters = []
+    MAE = []
+    RMSE = []
+    x_axis = []
+
+    for subject_id in range(1, 3):
+
+        sub_num_clus = []
+        sub_mse = []
+        sub_rmse = []
+        sub_axis = []
+
+        target_dir = "../data/real_data/clustered_images/"
+        source_dir = "../data/real_data/Subject_" + str(subject_id)
+        obj_data = ReadData(subject_id=subject_id,
+                            num_days=-1,
+                            dir_name=source_dir)
+        data = obj_data.image.copy()
+        num_activities = obj_data.get_num_spaces()
+        del obj_data
+
+        filtered_data = data.copy()
+        # for day in data:
+        #     filtered = median_filtering(day)
+        #     if scale_down != scale:
+        #         filtered = scale_data(filtered, int(scale_down / scale))
+        #     filtered_data.append(filtered)
+
+        # data for every 14 days
+        start_day = 0
+        end_day = 14
+        while end_day <= len(filtered_data):
+            print("Day:", start_day + 1, "to Day:", end_day)
+            routine14days = filtered_data[start_day:end_day]
+            num_days = 0
+            cluster_feat = dict()
+            cluster_pixel = dict()
+            c_id = 1
+            rgobj = RegionGrowth()
+            realgenobj = GenerateRealDataCluster(num_act=num_activities, scale=scale)
+
+            # single day processing
+            for routine in routine14days:
+                # day is a 1 day filtered routine
+                num_days += 1
+                seedroutine = [None] * len(routine)
+                routine_loc = [None] * len(routine)
+                for i in range(len(routine)):
+                    seedroutine[i] = routine[i]["room_idx"]
+                    routine_loc[i] = list(routine[i]["loc"])[0]
+
+                seedsobj = SEEDS()
+                seedsobj.initialize(width=len(routine), scale=scale_down, num_locs=num_activities)
+                seedsobj.assign_labels()
+                seedsobj.compute_histograms(seedroutine)
+                seedsobj.iterate()
+
+                seedlabels = seedsobj.labels[-1].copy()
+                del seedsobj
+                # realgenobj = GenerateRealDataCluster(num_act=num_activities, scale=5)
+                cf, cp = realgenobj.make_single_day_clusters(routine, seedlabels, num_days)
+
+                # merge adjacent single day similar activities
+                cluster_new_old = rgobj.cluster_sameday_activity(cf)
+                cf, cp = realgenobj.merge_sameday_cluster_features(cluster_new_old, cf, cp)
+
+                for c in cf:
+                    cluster_feat[c_id] = cf[c]
+                    cluster_pixel[c_id] = cp[c]
+                    c_id += 1
+
+            # visual results
+            num_intervals = int((24 * 60 * 60) / scale_down)
+            dims = (num_days, num_intervals, 3)
+
+            print("num days: ", num_days)
+            print("Initial number of clusters: ", len(cluster_feat))
+            init_cluster_feat = cluster_feat.copy()
+            # make cluster course dict
+            cluster_coarse = dict()
+            for c in cluster_feat:
+                cluster_coarse[c] = [c]
+
+            print("********************************************************************************")
+            print("performing Hierarchical merging.....")
+            print(" TIME-DURATION HISTOGRAM COSINE ")
+
+            success = True
+            while success:
+                print("number of clusters before merging: ", len(cluster_pixel))
+                cluster_new_old, cluster_pixel, cluster_coarse, success = rgobj.region_growth(cluster_pixel,
+                                                                                              cluster_coarse,
+                                                                                              cluster_feat,
+                                                                                              thresh=0.7,
+                                                                                              measure="timedur_hist_cosine_sim")
+                print("number of clusters after merging: ", len(cluster_pixel))
+                print("Preparing features for new clusters")
+                cluster_feat = realgenobj.merge_cluster_features(orig_clusters_features=cluster_feat,
+                                                                 cluster_new_old=cluster_new_old)
+                if len(cluster_pixel) != len(cluster_feat):
+                    print("number of clusters in cluster_pixel and cluster_feat are different")
+
+            # print("preparing visual results for clusters.....")
+            # img_sp, label = plot_cluster(cluster_pixel, dims)
+            # if SHOW_IMAGE:
+            #     if VISUALIZE:
+            #         obj_dv = dv(img_sp, label)
+            #         obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+            #     else:
+            #         cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+            #         cv2.imshow("First Pass Clusters", img_sp)
+            #         cv2.waitKey(0)
+
+            success = True
+            print(" START TIME - DURATION and PREV ACTIVITY HISTOGRAM COSINE ")
+            while success:
+                print("number of clusters before merging: ", len(cluster_pixel))
+                cluster_new_old, cluster_pixel, cluster_coarse, success = rgobj.region_growth(cluster_pixel,
+                                                                                              cluster_coarse,
+                                                                                              cluster_feat,
+                                                                                              thresh=0.9,
+                                                                                              measure="durprevact_hist_cosine_sim")
+                print("number of clusters after merging: ", len(cluster_pixel))
+                print("Preparing features for new clusters")
+                cluster_feat = realgenobj.merge_cluster_features(orig_clusters_features=cluster_feat,
+                                                                 cluster_new_old=cluster_new_old)
+                if len(cluster_pixel) != len(cluster_feat):
+                    print("number of clusters in cluster_pixel and cluster_feat are different")
+
+                # img_sp, label_sp = plot_cluster(cluster_pixels, dims)
+                # obj_dv = dv(img_sp, label_sp)
+                # obj_dv.feature_comparison(clusters_feat)
+
+            print("preparing visual results for clusters.....")
+            img_sp, label = plot_cluster(cluster_pixel, dims)
+            if SHOW_IMAGE:
+                if VISUALIZE:
+                    obj_dv = dv(img_sp, label)
+                    obj_dv.feature_comparison(cluster_feat, init_cluster_feat, cluster_coarse)
+                else:
+                    cv2.namedWindow("First Pass Clusters", cv2.WINDOW_NORMAL)
+                    cv2.imshow("First Pass Clusters", img_sp)
+                    cv2.waitKey(0)
+
+            if SAVE_IMAGE:
+                filename = "Subject" + str(subject_id) + "_day" + str(start_day + 1) + "-" + str(end_day) + ".png"
+                cv2.imwrite(target_dir + filename, img_sp)
+
+            rmse = total_RMSE(init_cluster_feat, cluster_coarse)
+            mae = total_MAE(init_cluster_feat, cluster_coarse)
+
+            sub_num_clus.append(len(cluster_pixel))
+            sub_mse.append(mae)
+            sub_rmse.append(rmse)
+            sub_axis.append(start_day)
+
+            start_day += 7
+            end_day += 7
+
+        num_clusters.append(sub_num_clus)
+        MAE.append(sub_mse)
+        RMSE.append(sub_rmse)
+        x_axis.append(sub_axis)
+
+    # plot graph
+    # num clusters
+    plt.rc('xtick', labelsize=20)
+    plt.rc('ytick', labelsize=20)
+
+    fig1 = plt.figure()
+    plt.plot(x_axis[0], num_clusters[0], 'b', label="subject1")
+    plt.plot(x_axis[0], num_clusters[0], 'b', marker='o')
+    plt.plot(x_axis[1], num_clusters[1], 'r', label="subject2")
+    plt.plot(x_axis[1], num_clusters[1], 'r', marker='o')
+
+    plt.xlabel("Start Day", fontsize=20)
+    plt.ylabel("Number of Clusters", fontsize=20)
+    # plt.title(graph_name, fontsize=1)
+    plt.legend(prop={'size': 20})
+    plt.ylim(ymin=0)
+    plt.savefig("../data/real_data/graphs/num_cluster_60.png")
+    plt.show()
+
+    fig2 = plt.figure()
+    plt.plot(x_axis[0], MAE[0], 'b', label="subject1")
+    plt.plot(x_axis[0], MAE[0], 'b', marker='o')
+    plt.plot(x_axis[1], MAE[1], 'r', label="subject2")
+    plt.plot(x_axis[1], MAE[1], 'r', marker='o')
+
+    plt.xlabel("Start Day", fontsize=20)
+    plt.ylabel("MAE", fontsize=20)
+    # plt.title(graph_name, fontsize=1)
+    plt.legend(prop={'size': 20})
+    plt.ylim(ymin=0)
+    plt.savefig("../data/real_data/graphs/mae_60.png")
+    plt.show()
+
+    fig3 = plt.figure()
+    plt.plot(x_axis[0], RMSE[0], 'b', label="subject1")
+    plt.plot(x_axis[0], RMSE[0], 'b', marker='o')
+    plt.plot(x_axis[1], RMSE[1], 'r', label="subject2")
+    plt.plot(x_axis[1], RMSE[1], 'r', marker='o')
+
+    plt.xlabel("Start Day", fontsize=20)
+    plt.ylabel("RMSE", fontsize=20)
+    # plt.title(graph_name, fontsize=1)
+    plt.legend(prop={'size': 20})
+    plt.ylim(ymin=0)
+    plt.savefig("../data/real_data/graphs/rmse_60.png")
+    plt.show()
+
+
+if __name__ == "__main__":
+    evaluate_real_data()
