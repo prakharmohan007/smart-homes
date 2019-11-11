@@ -13,7 +13,7 @@ from seeds import SEEDS
 # from data_processing import TempDataProcessing, ClusterProcessing, DataPreparation
 # from region_growth import RegionGrowth
 
-SAVE_IMAGE = 0
+SAVE_IMAGE = 1
 SHOW_IMAGE = 1
 VISUALIZE = 1
 DEBUG = 0
@@ -58,13 +58,13 @@ def scale_data(list1d, scale=6):
             container1[list(list1d[i]["loc"])[0]] += 1
             container2[list(list1d[i]["loc"])[0]] = list1d[i]
 
-        if (i+1) % scale == 0:
+        if (i + 1) % scale == 0:
             max_act = max(container1, key=container1.get)
             scaled.append(container2[max_act].copy())
             container1 = dict()
             container2 = dict()
 
-    if len(scaled) != int(len(list1d)/scale):
+    if len(scaled) != int(len(list1d) / scale):
         print("scale_data: lengths different")
         raise
 
@@ -195,7 +195,7 @@ def synthetic_dataset():
             filenum) + "jpg"
 
     # filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
-    filename = "uci_adl_A_orig"
+    filename = "uci_adl_B_orig"
     filepath = "../data/synthetic_data/uci_adl/" + filename + ".csv"
 
     obj_data = GenerateSyntheticCluster(
@@ -234,9 +234,10 @@ def synthetic_dataset():
     success = True
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
-                                                                                         clusters_feat, thresh=0.7,
-                                                                                         measure="timedur_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.synt_region_growth(cluster_pixels,
+                                                                                              cluster_coarse,
+                                                                                              clusters_feat, thresh=0.7,
+                                                                                              measure="timedur_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -248,9 +249,10 @@ def synthetic_dataset():
     print(" START TIME - DURATION and PREV ACTIVITY HISTOGRAM COSINE ")
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
-                                                                                         clusters_feat, thresh=0.8,
-                                                                                         measure="durprevact_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.synt_region_growth(cluster_pixels,
+                                                                                              cluster_coarse,
+                                                                                              clusters_feat, thresh=0.8,
+                                                                                              measure="durprevact_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -295,9 +297,9 @@ def real_dataset():
     print("prepare data")
     # obj_data = TempDataProcessing("../data/180724_180810_mod.csv")
     # obj_data = TempDataProcessing("../data/toy_example.csv")
-    obj_data = ReadData(subject_id=1,
+    obj_data = ReadData(subject_id=2,
                         num_days=15,
-                        dir_name="../data/real_data/Subject_1/")
+                        dir_name="../data/real_data/Subject_2/")
     # file_name="xandem_2018-12-02.log")
     # print("number of days:", len(obj_data.image))
     # print("number of intervals: ", len(obj_data.image[0]))
@@ -415,7 +417,7 @@ def real_dataset():
         print("number of clusters after merging: ", len(cluster_pixel))
         print("Preparing features for new clusters")
         cluster_feat = realgenobj.merge_cluster_features(orig_clusters_features=cluster_feat,
-                                                          cluster_new_old=cluster_new_old)
+                                                         cluster_new_old=cluster_new_old)
         if len(cluster_pixel) != len(cluster_feat):
             print("number of clusters in cluster_pixel and cluster_feat are different")
 
@@ -474,6 +476,7 @@ def real_data_complete():
                             dir_name=source_dir)
         data = obj_data.image.copy()
         num_activities = obj_data.get_num_spaces()
+        num_types = obj_data.get_num_space_types()
         del obj_data
 
         filtered_data = data.copy()
@@ -487,14 +490,14 @@ def real_data_complete():
         start_day = 0
         end_day = 14
         while end_day <= len(filtered_data):
-            print("Day:", start_day+1, "to Day:", end_day)
+            print("Day:", start_day + 1, "to Day:", end_day)
             routine14days = filtered_data[start_day:end_day]
             num_days = 0
             cluster_feat = dict()
             cluster_pixel = dict()
             c_id = 1
             rgobj = RegionGrowth()
-            realgenobj = GenerateRealDataCluster(num_act=num_activities, scale=5)
+            realgenobj = GenerateRealDataCluster(num_act=num_activities, num_type=num_types, scale=scale)
 
             # single day processing
             for routine in routine14days:
@@ -622,7 +625,7 @@ def real_data_complete():
                     cv2.waitKey(0)
 
             if SAVE_IMAGE:
-                filename = "Subject" + str(subject_id) + "_day" + str(start_day+1) + "-" + str(end_day) + ".png"
+                filename = "Subject" + str(subject_id) + "_day" + str(start_day + 1) + "-" + str(end_day) + ".png"
                 cv2.imwrite(target_dir + filename, img_sp)
 
             start_day += 7
@@ -655,7 +658,7 @@ def test_real_data():
     del obj_data
 
     f1 = median_filtering(data[0])
-    f2 = scale_data(f1, int(scale_down/scale))
+    f2 = scale_data(f1, int(scale_down / scale))
 
     l1 = []
     for i in range(len(f1)):
@@ -674,7 +677,7 @@ def test_real_data():
     for d in data:
         filtered = median_filtering(d)
         if scale_down != scale:
-            filtered = scale_data(filtered, int(scale_down/scale))
+            filtered = scale_data(filtered, int(scale_down / scale))
         filtered_data.append(filtered)
 
     day = 14
@@ -722,8 +725,8 @@ def test_real_data():
 
 
 if __name__ == "__main__":
-    # synthetic_dataset()
-    real_dataset()
+    synthetic_dataset()
+    # real_dataset()
     # real_data_complete()
     # test_real_data()
 

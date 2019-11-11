@@ -44,7 +44,7 @@ class SEEDS:
             # 8 minute superpixel -> superpixel width = 8
             # 2, 4, 8
             self.seed_width = 2
-            self.nr_levels = 3
+            self.nr_levels = 4
             self.nr_superpixels = 1440 / 8  # 180
         elif width == 17280:
             # 8 minute superpixel -> superpixel width = 96

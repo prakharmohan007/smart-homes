@@ -89,7 +89,7 @@ class ReadSyntheticData:
 # feature convention: dictionary
 # numpy arrays and integers and sets
 class Features:
-    def __init__(self, time_bins, act_bins, type_bins, scale):
+    def __init__(self, time_bins=0, act_bins=0, type_bins=0, scale=5):
         self.time_bins = time_bins
         self.act_bins = act_bins
         self.type_bins = type_bins
@@ -134,8 +134,10 @@ class Features:
         features["time_hist"][scell:ecell] = 1
         features["dur_hist"][0:int(duration / self.scale)] = 1
 
-        features["loc_array"] = loc_array.copy()
-        features["type_array"] = type_array.copy()
+        if loc_array is not None:
+            features["loc_array"] = loc_array.copy()
+        if type_array is not None:
+            features["type_array"] = type_array.copy()
 
         if prev_act is not None:
             features["prev_act_bag"] = prev_act.copy()
@@ -159,8 +161,11 @@ class Features:
         feat1["time_hist"] = feat1["time_hist"] + feat2["time_hist"]
         feat1["dur_hist"] = feat1["dur_hist"] + feat2["dur_hist"]
 
-        feat1["loc_array"] = feat1["loc_array"] + feat2["loc_array"]
-        feat1["type_array"] = feat1["type_array"] + feat2["type_array"]
+        if feat1["loc_array"] is not None:
+            feat1["loc_array"] = feat1["loc_array"] + feat2["loc_array"]
+
+        if feat1["type_array"] is not None:
+            feat1["type_array"] = feat1["type_array"] + feat2["type_array"]
 
         if feat1["prev_act_bag"] is None:
             feat1["prev_act_bag"] = feat2["prev_act_bag"].copy()
@@ -205,7 +210,7 @@ class GenerateSyntheticCluster:
             stime = time_to_sec(self.data[c - 1][1])
             duration = int(self.data[c - 1][2])
             clust_feat[c] = obj_feat.init_features(loc=loc, loc_type=loc_type, stime=stime, duration=duration,
-                                                   prev_act=prev_act)
+                                                   loc_array=None, type_array=None, prev_act=prev_act)
             # print(clust_feat[c])
             prev_act = clust_feat[c]["prev_act_bag"].copy()
             prev_act[self.obj_xml.space_id[loc]] += 1

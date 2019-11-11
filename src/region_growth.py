@@ -212,7 +212,8 @@ class RegionGrowth:
                 temp_edge['a'] = c1
                 temp_edge['b'] = c2
 
-                if self.hist_cosine_similarity(cluster_feat[c1]["loc_array"], cluster_feat[c2]["loc_array"]) > 0.8:
+                # if self.hist_cosine_similarity(cluster_feat[c1]["type_array"], cluster_feat[c2]["type_array"]) > 0.8:
+                if self.hist_cosine_similarity(cluster_feat[c1]["type_array"], cluster_feat[c2]["type_array"]) > 0.8:
                     temp_edge['w'] = self.hist_similarity_measures(cluster_feat[c1], cluster_feat[c2], measure)
                     # temp_edge['w']=self.hist_inter_union(cluster_feat[c1]["time_hist"],cluster_feat[c2]["time_hist"])
                 edges.append(temp_edge)

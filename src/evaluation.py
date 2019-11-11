@@ -53,17 +53,18 @@ def scale_data(list1d, scale=6):
             container1[list(list1d[i]["loc"])[0]] += 1
             container2[list(list1d[i]["loc"])[0]] = list1d[i]
 
-        if (i+1) % scale == 0:
+        if (i + 1) % scale == 0:
             max_act = max(container1, key=container1.get)
             scaled.append(container2[max_act].copy())
             container1 = dict()
             container2 = dict()
 
-    if len(scaled) != int(len(list1d)/scale):
+    if len(scaled) != int(len(list1d) / scale):
         print("scale_data: lengths different")
         raise
 
     return scaled
+
 
 def data_scaling(data, interval):
     scaled_data = []
@@ -114,8 +115,8 @@ def plot_cluster(clusters, dims):
 
 
 def plot_subgraphs(x, y, plot_labels, graph_name, i_name, y_axis):
-    plt.rc('xtick', labelsize=20)
-    plt.rc('ytick', labelsize=20)
+    plt.rc('xtick', labelsize=25)
+    plt.rc('ytick', labelsize=25)
     fig = plt.figure()
     marker = ['o', 'x', '*', 'p']
     line = ['-', '--', '-.', ':']
@@ -124,14 +125,14 @@ def plot_subgraphs(x, y, plot_labels, graph_name, i_name, y_axis):
         # print(x[p])
         # plt.plot(y, x[p], c=cmap(p), label=str(plot_labels[p]))
         # plt.plot(y, x[p], c=cmap(p), marker='o')
-        color = np.random.rand(3,)
+        color = np.random.rand(3, )
         plt.plot(y, x[p], linestyle=line[p], color='k', marker=marker[p], label=str(plot_labels[p]))
         # plt.plot(y, x[p], color='k', marker=marker[p])
 
     plt.legend(prop={'size': 20})
     plt.ylim(ymin=0)
-    plt.xlabel("standard deviation", fontsize=20)
-    plt.ylabel(y_axis, fontsize=20)
+    plt.xlabel("standard deviation", fontsize=25)
+    plt.ylabel(y_axis, fontsize=25)
     # plt.title(graph_name)
     # plt.pause(1)
     plt.savefig("../data/synthetic_data/graphs/" + i_name + "_" + graph_name + ".png")
@@ -139,14 +140,14 @@ def plot_subgraphs(x, y, plot_labels, graph_name, i_name, y_axis):
 
 
 def plot_graph(x, y, graph_name, i_name, y_axis):
-    plt.rc('xtick', labelsize=20)
-    plt.rc('ytick', labelsize=20)
+    plt.rc('xtick', labelsize=25)
+    plt.rc('ytick', labelsize=25)
     fig = plt.figure()
-    plt.plot(y, x, 'b')
-    plt.plot(y, x, 'b', marker='o')
+    plt.plot(y, x, 'k')
+    plt.plot(y, x, 'k', marker='o')
     plt.ylim(ymin=0)
-    plt.xlabel("standard deviation", fontsize=20)
-    plt.ylabel(y_axis, fontsize=20)
+    plt.xlabel("standard deviation", fontsize=25)
+    plt.ylabel(y_axis, fontsize=25)
     # plt.title(graph_name, fontsize=1)
     plt.savefig("../data/synthetic_data/graphs/" + i_name + "_" + graph_name + ".png")
     plt.show()
@@ -156,7 +157,7 @@ def variance_norm(arr):
     l_arr = np.max(arr)
     if l_arr == 0:
         l_arr = 1
-    norm_arr = arr/l_arr
+    norm_arr = arr / l_arr
     # print(norm_arr)
     var_arr = np.var(norm_arr)
     return var_arr
@@ -255,9 +256,10 @@ def clustering(lvl, f_name):
     success = True
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
-                                                                                         clusters_feat, thresh=0.7,
-                                                                                         measure="timedur_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.synt_region_growth(cluster_pixels,
+                                                                                              cluster_coarse,
+                                                                                              clusters_feat, thresh=0.7,
+                                                                                              measure="timedur_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -280,9 +282,10 @@ def clustering(lvl, f_name):
 
     while success:
         print("number of clusters before merging: ", len(cluster_pixels))
-        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.region_growth(cluster_pixels, cluster_coarse,
-                                                                                         clusters_feat, thresh=0.8,
-                                                                                         measure="durprevact_hist_cosine_sim")
+        cluster_elements, cluster_pixels, cluster_coarse, success = obj_rg.synt_region_growth(cluster_pixels,
+                                                                                              cluster_coarse,
+                                                                                              clusters_feat, thresh=0.8,
+                                                                                              measure="durprevact_hist_cosine_sim")
         print("number of clusters after merging: ", len(cluster_pixels))
         print("Preparing features for new clusters")
         clusters_feat = obj_data.merge_cluster_features(orig_clusters_features=clusters_feat,
@@ -325,6 +328,7 @@ def evaluate_synthetic_data():
     print("prepare data")
 
     lvl = 3
+    noise = ""
     prob = [0.3, 0.5, 0.7, 0.9]
     sd = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
     filenum = 5
@@ -340,10 +344,10 @@ def evaluate_synthetic_data():
             avg_num_clusters = 0
             avg_var = 0
             avg_mae = 0
-            for f_num in range(1, filenum+1):
+            for f_num in range(1, filenum + 1):
 
                 if p is None:
-                    f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + str(f_num)
+                    f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + noise + str(f_num)
                 else:
                     f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(f_num)
 
@@ -353,9 +357,9 @@ def evaluate_synthetic_data():
                 avg_var += var
                 avg_mae += mae
 
-            num_clusters.append(int(avg_num_clusters/filenum))
-            rmse_sd.append(avg_var/(filenum*1000))
-            mae_sd.append(avg_mae/(filenum*1000))
+            num_clusters.append(int(avg_num_clusters / filenum))
+            rmse_sd.append(avg_var / (filenum * 1000))
+            mae_sd.append(avg_mae / (filenum * 1000))
         cluster_plot.append(num_clusters)
         rmse_plot.append(rmse_sd)
         mae_plot.append(mae_sd)
@@ -363,27 +367,28 @@ def evaluate_synthetic_data():
     if lvl != 3:
         print("Graph: Cluster-SD")
         print("Clusters: ", cluster_plot[0])
-        plot_graph(cluster_plot[0], sd, "Level "+str(lvl)+":  Cluster-SD", str(lvl), y_axis="Number of CLusters")
+        plot_graph(cluster_plot[0], sd, "Level " + str(lvl) + ":  Cluster-SD", str(lvl), y_axis="Number of CLusters")
 
         print("Graph: RMSE-SD")
         print("RMSE", rmse_plot[0])
-        plot_graph(rmse_plot[0], sd, "Level "+str(lvl)+":  RMSE-SD", str(lvl), y_axis="RMSE (scale=1000)")
+        plot_graph(rmse_plot[0], sd, "Level " + str(lvl) + ":  RMSE-SD", str(lvl), y_axis="RMSE (scale=1000)")
 
         print("Graph: MAE-SD")
         print("MAE", mae_plot[0])
-        plot_graph(mae_plot[0], sd, "Level "+str(lvl)+":  MAE-SD", str(lvl), y_axis="MAE (scale=1000)")
+        plot_graph(mae_plot[0], sd, "Level " + str(lvl) + ":  MAE-SD", str(lvl), y_axis="MAE (scale=1000)")
     else:
         print("Graph: Cluster-SD")
         print("Clusters: ", cluster_plot)
-        plot_subgraphs(cluster_plot, sd, prob, "Level "+str(lvl)+":  Cluster-SD", str(lvl), y_axis="Number of CLusters")
+        plot_subgraphs(cluster_plot, sd, prob, "Level " + str(lvl) + ":  Cluster-SD", str(lvl),
+                       y_axis="Number of CLusters")
 
         print("Graph: RMSE-SD")
         print("RMSE", rmse_plot)
-        plot_subgraphs(rmse_plot, sd, prob, "Level "+str(lvl)+": RMSE-SD", str(lvl), y_axis="RMSE (scale=1000)")
+        plot_subgraphs(rmse_plot, sd, prob, "Level " + str(lvl) + ": RMSE-SD", str(lvl), y_axis="RMSE (scale=1000)")
 
         print("Graph: MAE-SD")
         print("MAE", mae_plot)
-        plot_subgraphs(mae_plot, sd, prob, "Level "+str(lvl)+": MAE-SD", str(lvl), y_axis="MAE (scale=1000)")
+        plot_subgraphs(mae_plot, sd, prob, "Level " + str(lvl) + ": MAE-SD", str(lvl), y_axis="MAE (scale=1000)")
 
 
 def evaluate_real_data():
@@ -409,14 +414,15 @@ def evaluate_real_data():
                             dir_name=source_dir)
         data = obj_data.image.copy()
         num_activities = obj_data.get_num_spaces()
+        num_types = obj_data.get_num_space_types()
         del obj_data
 
-        filtered_data = data.copy()
-        # for day in data:
-        #     filtered = median_filtering(day)
-        #     if scale_down != scale:
-        #         filtered = scale_data(filtered, int(scale_down / scale))
-        #     filtered_data.append(filtered)
+        filtered_data = []  # data.copy()
+        for day in data:
+            filtered = median_filtering(day, window_size=6)
+            # if scale_down != scale:
+            #     filtered = scale_data(filtered, int(scale_down / scale))
+            filtered_data.append(filtered)
 
         # data for every 14 days
         start_day = 0
@@ -429,7 +435,7 @@ def evaluate_real_data():
             cluster_pixel = dict()
             c_id = 1
             rgobj = RegionGrowth()
-            realgenobj = GenerateRealDataCluster(num_act=num_activities, scale=scale)
+            realgenobj = GenerateRealDataCluster(num_act=num_activities, num_type=num_types, scale=scale)
 
             # single day processing
             for routine in routine14days:
@@ -542,8 +548,8 @@ def evaluate_real_data():
             mae = total_MAE(init_cluster_feat, cluster_coarse)
 
             sub_num_clus.append(len(cluster_pixel))
-            sub_mse.append(mae)
-            sub_rmse.append(rmse)
+            sub_mse.append(mae/100)
+            sub_rmse.append(rmse/1000)
             sub_axis.append(start_day)
 
             start_day += 7
@@ -556,8 +562,8 @@ def evaluate_real_data():
 
     # plot graph
     # num clusters
-    plt.rc('xtick', labelsize=20)
-    plt.rc('ytick', labelsize=20)
+    plt.rc('xtick', labelsize=25)
+    plt.rc('ytick', labelsize=25)
 
     fig1 = plt.figure()
     plt.plot(x_axis[0], num_clusters[0], 'b', label="subject1")
@@ -565,8 +571,8 @@ def evaluate_real_data():
     plt.plot(x_axis[1], num_clusters[1], 'r', label="subject2")
     plt.plot(x_axis[1], num_clusters[1], 'r', marker='o')
 
-    plt.xlabel("Start Day", fontsize=20)
-    plt.ylabel("Number of Clusters", fontsize=20)
+    plt.xlabel("Day", fontsize=25)
+    plt.ylabel("Number of Clusters", fontsize=25)
     # plt.title(graph_name, fontsize=1)
     plt.legend(prop={'size': 20})
     plt.ylim(ymin=0)
@@ -579,8 +585,8 @@ def evaluate_real_data():
     plt.plot(x_axis[1], MAE[1], 'r', label="subject2")
     plt.plot(x_axis[1], MAE[1], 'r', marker='o')
 
-    plt.xlabel("Start Day", fontsize=20)
-    plt.ylabel("MAE", fontsize=20)
+    plt.xlabel("Day", fontsize=25)
+    plt.ylabel("MAE (scale=100)", fontsize=25)
     # plt.title(graph_name, fontsize=1)
     plt.legend(prop={'size': 20})
     plt.ylim(ymin=0)
@@ -593,8 +599,8 @@ def evaluate_real_data():
     plt.plot(x_axis[1], RMSE[1], 'r', label="subject2")
     plt.plot(x_axis[1], RMSE[1], 'r', marker='o')
 
-    plt.xlabel("Start Day", fontsize=20)
-    plt.ylabel("RMSE", fontsize=20)
+    plt.xlabel("Day", fontsize=25)
+    plt.ylabel("RMSE (scale=1000)", fontsize=25)
     # plt.title(graph_name, fontsize=1)
     plt.legend(prop={'size': 20})
     plt.ylim(ymin=0)
@@ -604,3 +610,4 @@ def evaluate_real_data():
 
 if __name__ == "__main__":
     evaluate_real_data()
+    # evaluate_synthetic_data()

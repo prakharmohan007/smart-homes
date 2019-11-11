@@ -50,7 +50,11 @@ class SpaceMapper:
             self.space_ids[child.tag] = num_rooms
             self.ids_space[num_rooms] = child.tag
             # self.space_type.add(child.attrib.get("type"))
-            self.space_type[child.tag] = child.attrib.get("type")
+            temp = int(child.attrib.get("type"))
+            self.space_type[child.tag] = temp
+            if temp not in self.type_space:
+                self.type_space[temp] = set()
+            self.type_space[temp].add(child.tag)
             num_rooms += 1
 
         hmap = self.root[self.subject_id-1].find("matrix").text
