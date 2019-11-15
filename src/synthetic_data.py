@@ -186,7 +186,9 @@ class SyntheticData:
                 # calc standard deviation as a percent of duration
                 sd = int(duration * self.sd[sd_idx] / 100.0)
 
-            rand_duration = int(random.gauss(duration, sd))
+            rand_duration = abs(int(random.gauss(duration, sd)))
+            if rand_duration < 0:
+                print(rand_duration)
 
             # check if activity crosses 24 hrs
             if start_sec + rand_duration > 24 * 60 * 60:
@@ -267,7 +269,7 @@ class SyntheticData:
                     # calc standard deviation as a percent of duration
                     sd = int(duration * self.sd[sd_idx] / 100.0)
 
-                rand_duration = int(random.gauss(duration, sd))
+                rand_duration = abs(int(random.gauss(duration, sd)))
 
                 # check if activity crosses 24 hrs
                 if start_sec + rand_duration > 24 * 60 * 60:
@@ -312,7 +314,7 @@ class SyntheticData:
     def level_2(self, routine, controlled=False, sdp=10, num_noise=5):
         if controlled:
             print("[SyntheticData] Level_2: Generating level2 data for ", self.num_files, "files, ", self.num_days,
-                  " days and controlled SD of " + str(sdp) + "% in each file.")
+                  " days, controlled SD of " + str(sdp) + "% and " + str(num_noise) + " noise instances in each file.")
         else:
             print("[SyntheticData] Level_2: Generating level2 data for ", self.num_files, "files, ", self.num_days,
                   " days in each file.")
@@ -328,7 +330,7 @@ class SyntheticData:
                 # ..get a random number of instances of noise
                 num_act = random.randint(a=1, b=num_noise)
                 act_dur = int(routine[-1][2])  # last record in routine is the noise
-                act_sd = int(act_dur / 10)  # setting standard deviation to 10%
+                act_sd = int(act_dur * sdp/100)  # setting standard deviation to 10%
                 num_cells = int(24 * 60 * 60 / self.scale)
 
                 # unpack one-day-routine to easy introduce the noise
@@ -338,8 +340,10 @@ class SyntheticData:
                 # ..for each instance
                 for i in range(num_act):
                     # ..get a random duration of noise
-                    # rand_act_dur = int(random.gauss(act_dur, act_sd))
-                    rand_act_dur = int(random.randint(1, 10) * act_dur / 10)
+                    rand_act_dur = abs(int(random.gauss(act_dur, act_sd)))
+                    # rand_act_dur = int(random.randint(1, 10) * act_dur / 10)
+                    # if rand_act_dur < 2700:
+                    #     print(rand_act_dur)
 
                     success = False
                     while not success:
@@ -392,7 +396,7 @@ class SyntheticData:
                                                              controlled=controlled, sdp=sdp, prob=prob,
                                                              noise_num=noise_num)
                 synt_routine = synt_routine + one_day_routine
-            self.write_files(routine=synt_routine, level=3, file_num=f_num, controlled=controlled, sdp=sdp, prob=prob)
+            # self.write_files(routine=synt_routine, level=3, file_num=f_num, controlled=controlled, sdp=sdp, prob=prob)
 
     # UCI DATA SET
     @staticmethod
@@ -521,13 +525,23 @@ class SyntheticData:
 
 if __name__ == "__main__":
     obj = SyntheticData()
-    num_noise = 10  # change this value for varying number of noise each day in level2
+    num_noise = [5, 10, 15, 20]  # change this value for varying number of noise each day in level2
     sdp = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
     prob = [0.3, 0.5, 0.7, 0.9]
-    for sd in sdp:
-        # for p in prob:
-        obj.gen_synthetic_data(level=2, num_days=30, num_files=5, controlled=True, sdp=sd, prob=None,
-                               num_noise=num_noise)
+    # for sd in sdp:
+    #     # for p in prob:
+    #     obj.gen_synthetic_data(level=2, num_days=30, num_files=10, controlled=True, sdp=sd, prob=None,
+
+    # level 2
+    # for noise in num_noise:
+    #     for sd in sdp:
+    #         obj.gen_synthetic_data(level=2, num_days=30, num_files=10, controlled=True, sdp=sd, prob=None, num_noise=noise)
+
+    # level 3
+    for p in prob:
+        for sd in sdp:
+            obj.gen_synthetic_data(level=3, num_days=30, num_files=10, controlled=True, sdp=sd, prob=p)
+
     # sd = [5, 10, 15, 20, 25, 30]
     # for sdp in sd:
     #     obj.gen_uci_synthetic_data(file_path="../data/synthetic_data/uci_adl/uci_adl_B_orig.csv",
