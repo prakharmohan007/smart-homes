@@ -1,6 +1,4 @@
-# swap files
-*.swp
-
-# directories
-data
+# unwanted folders
+.idea
 graphs
+data
