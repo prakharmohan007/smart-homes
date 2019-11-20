@@ -182,24 +182,29 @@ def synthetic_dataset():
 
     level = 2
     prob = None
-    sd = 30
+    noise_array = [5, 10, 15, 20]
+    noise = 5
+    sd = 5
     filenum = 1
 
-    if prob is None:
+    if level == 1:
         filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_" + str(filenum) + ".csv"
         imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_" + str(filenum) + ".jpg"
+    elif level == 2:
+        filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_noise" + str(noise) + "_" + str(filenum) + ".csv"
+        imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_noise" + str(noise) + "_" + str(filenum) + ".jpg"
     else:
         filename = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(
             filenum) + ".csv"
         imgname = "synt_data_lvl" + str(level) + "_days30_sd" + str(sd) + "_prob" + str(prob) + "_" + str(
             filenum) + "jpg"
 
-    # filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
-    filename = "uci_adl_B_orig"
-    filepath = "../data/synthetic_data/uci_adl/" + filename + ".csv"
+    filepath = "../data/synthetic_data/level" + str(level) + "/parsed_data/" + filename
+    # filename = "uci_adl_B_orig"
+    # filepath = "../data/synthetic_data/uci_adl/" + filename + ".csv"
 
     obj_data = GenerateSyntheticCluster(
-        routine_type="UCI",
+        routine_type="ADL1",  # ADL1, UCI
         file_path=filepath,
         scale=30)
 
