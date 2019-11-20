@@ -382,7 +382,7 @@ class PoincarePlot:
 
     def main(self):
         lvl = 3
-        noise = "noise5_"
+        noise = [5, 10, 15, 20]
         prob = [0.3, 0.5, 0.7, 0.9]
         sd = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
         filenum = 5
@@ -391,7 +391,7 @@ class PoincarePlot:
         long_axis_all = []
         center_all = []
 
-        # for p in prob:
+        n = 0  # for n in noise:
         for p in prob:
             short_axis = []
             long_axis = []
@@ -402,8 +402,10 @@ class PoincarePlot:
                 points = []
 
                 for f_num in range(1, filenum + 1):
-                    if p is None:
-                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + noise + str(f_num)
+                    if lvl == 1:
+                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + str(f_num)
+                    elif lvl == 2:
+                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_noise" + str(n) + "_" + str(f_num)
                     else:
                         f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(
                             f_num)
@@ -507,22 +509,22 @@ class SequenceMatching:
         # print(avg/(len(sequence) - 1))
         return avg/(len(sequence) - 1), avg_points, quick_avg/(len(sequence) - 1), q_avg_points
 
-    def plotGraphs3(self, x_axis, ratio, q_ratio, prob_labels, x_label="Standard Deviation"):
+    def plotGraphs3(self, x_axis, ratio, q_ratio, labels, x_label="Standard Deviation"):
         # cmap = plt.cm.get_cmap("hsv", len(prob_labels))
-        cmap = plt.cm.jet(np.linspace(0, 1, len(prob_labels)))
+        cmap = plt.cm.jet(np.linspace(0, 1, len(labels)))
         fig, axs = plt.subplots(2, 1, sharex='none', sharey='none')
-        for i in range(len(prob_labels)):
+        for i in range(len(labels)):
 
             plt.rc('xtick', labelsize=15)
             plt.rc('ytick', labelsize=15)
-            axs[0].plot(x_axis[i], ratio[i], c=cmap[i], label=str(prob_labels[i]))
-            axs[0].plot(x_axis[i], ratio[i], c=cmap[i], marker='o')
+            axs[0].plot(x_axis, ratio[i], c=cmap[i], label=str(labels[i]))
+            axs[0].plot(x_axis, ratio[i], c=cmap[i], marker='o')
             axs[0].set_xlabel(x_label, fontsize=15)
             axs[0].set_ylabel("Similarity Ratio", fontsize=15)
             # axs[0].set_title("Short Axis Length for Synthetic Data")
 
-            axs[1].plot(x_axis[i], q_ratio[i], c=cmap[i], label=str(prob_labels[i]))
-            axs[1].plot(x_axis[i], q_ratio[i], c=cmap[i], marker='o')
+            axs[1].plot(x_axis, q_ratio[i], c=cmap[i], label=str(labels[i]))
+            axs[1].plot(x_axis, q_ratio[i], c=cmap[i], marker='o')
             axs[1].set_xlabel(x_label, fontsize=15)
             axs[1].set_ylabel("Similarity Q-Ratio", fontsize=15)
             # axs[1].set_title("Long Axis Length for Synthetic Data")
@@ -561,7 +563,7 @@ class SequenceMatching:
 
     def synthetic(self):
         lvl = 3
-        noise = ""
+        noise = [0]  # [5, 10, 15, 20]
         prob = [0.3, 0.5, 0.7, 0.9]
         sd = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
         filenum = 5
@@ -572,6 +574,7 @@ class SequenceMatching:
         q_ratio_points_all = []
 
         # for p in prob:
+        # for n in noise:
         for p in prob:
             ratio_sd = []
             ratio_points_sd = []
@@ -585,8 +588,11 @@ class SequenceMatching:
                 q_ratio_points = []
 
                 for f_num in range(1, filenum + 1):
-                    if p is None:
-                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + noise + str(f_num)
+                    if lvl == 1:
+                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + str(f_num)
+                    elif lvl == 2:
+                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_noise" + str(n) + "_" + str(
+                            f_num)
                     else:
                         f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(
                             f_num)
@@ -613,8 +619,10 @@ class SequenceMatching:
             q_ratio_all.append(q_ratio_sd)
             q_ratio_points_all.append(q_ratio_points_sd)
 
-        if lvl != 3:
+        if lvl == 1:
             self.plotGraphs(sd, ratio_all[0], ratio_points_all[0], q_ratio_all[0], q_ratio_points_all[0], lvl)
+        elif lvl == 2:
+            self.plotGraphs3(sd, ratio_all, q_ratio_all, noise)
         else:
             self.plotGraphs3(sd, ratio_all, q_ratio_all, prob)
 
@@ -708,7 +716,7 @@ class SequenceMatching:
             day = []
             while end_day <= len(filtered_data):
                 routine14days = filtered_data[start_day:end_day]
-                print(routine14days)
+                # print(routine14days)
                 r1, r1p, r2, r2p = self.getSequenceMatchingRatio(routine14days)
                 ratio.append(r1)
                 ratio_points.append(r1p)
@@ -734,4 +742,4 @@ if __name__ == '__main__':
     # ppobj.plotPairs()
     # ppobj.getActivityTableLevel3("../data/synthetic_data/level3/parsed_data/synt_data_lvl3_days30_sd5_prob0.7_4.csv")
     smobj = SequenceMatching()
-    smobj.real()
+    smobj.synthetic()
