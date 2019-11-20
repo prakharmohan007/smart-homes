@@ -1,4 +1,8 @@
-# unwanted folders
-.idea
-graphs
+# swap files
+.sw*
+
+# folders
 data
+graphs
+.idea
+src/__pycache__
