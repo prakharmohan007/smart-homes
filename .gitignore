@@ -6,3 +6,4 @@ data
 graphs
 .idea
 src/__pycache__
+venv

@@ -263,9 +263,11 @@ def evaluateSingleFile(filename):
 
 
 def main():
-    level = 1
+    level = 3
     sdp = [5, 10, 15, 20, 25, 30]
     num_noise = [20]
+    all_probs = [0.3, 0.5, 0.7, 0.9]
+    probs = [0.9]
 
     if level == 1:
         base_addr = "../../data/synthetic_data/new_synthetic_data/level1/"
@@ -300,6 +302,27 @@ def main():
 
         for noise, ious in zip(num_noise, seed_iou_noise):
             print(noise)
+            print(ious)
+
+    if level == 3:
+        base_addr = "../../data/synthetic_data/new_synthetic_data/level3/"
+        seed_iou_prob = []
+        for prob in probs:
+            seeds_iou_sd = []
+            for sd in sdp:
+                seed_iou = []
+                for n in range(5):
+                    filename = "newsynt_level3_sd" + str(sd) + "_prob" + str(prob) + "_" + str(n + 1) + ".csv"
+                    iou = evaluateSingleFile(base_addr+filename)
+                    seed_iou = seed_iou + iou
+                    print(sum(iou) / len(iou))
+                avg_iou = sum(seed_iou) / len(seed_iou)
+                seeds_iou_sd.append(avg_iou)
+            print(seeds_iou_sd)
+            seed_iou_prob.append(seeds_iou_sd)
+
+        for prob, ious in zip(probs, seed_iou_noise):
+            print(prob)
             print(ious)
 
 
