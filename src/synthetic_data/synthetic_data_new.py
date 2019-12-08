@@ -524,7 +524,7 @@ class SyntheticData:
                                                          controlled=controlled,
                                                          sdp=sdp, prob=prob)
                 synt_routine = synt_routine + one_day_routine
-            filename = "newsynt_level2_sd" + str(sdp) + "_prob" + str(prob) + "_" + str(f_num) + ".csv"
+            filename = "newsynt_level3_sd" + str(sdp) + "_prob" + str(prob) + "_" + str(f_num) + ".csv"
             writeFile(basepath, filename, synt_routine)
             # print(len(synt_routine))
 
