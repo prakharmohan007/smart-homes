@@ -20,7 +20,7 @@ def str_time_to_min(str_time):
 def minuteToString(minute):
     mm = int(minute % 60)
     hh = int(minute / 60)
-    time_str = str(hh).zfill(2) + ":"  + str(mm).zfill(2)
+    time_str = str(hh).zfill(2) + ":" + str(mm).zfill(2)
     return time_str
 
 
@@ -36,7 +36,6 @@ def sec_to_time(sec):
 
 
 def writeFile(basepath, filename, file):
-
     try:
         path = Path(basepath)
         path.mkdir(parents=True, exist_ok=True)
@@ -48,9 +47,9 @@ def writeFile(basepath, filename, file):
         print("[SyntheticData] write_files: Error with folder ", basepath, ", Error: ", err)
         raise
 
-    print("[writeFile]", basepath+"/"+filename)
+    print("[writeFile]", basepath + "/" + filename)
 
-    f = open(basepath+"/"+filename, 'w')
+    f = open(basepath + "/" + filename, 'w')
     csv_writer = csv.writer(f)
     csv_writer.writerow(["Day", "Time", "Room-ID", "Room-Type", "Activity"])
     for sample in file:
@@ -65,6 +64,7 @@ def newSyntheticRoutine():
             "etime": "07:00:00",
             "duration": 25201,
             "activity": "sleeping1",
+            "activity_type": "sleep",
             "loc": [[('R1', "room")], [('R2', "room")], [('R3', "room")]],
             "noise": (3, 8)
         },
@@ -73,6 +73,7 @@ def newSyntheticRoutine():
             "etime": "07:30:00",
             "duration": 1800,
             "activity": "hygiene1",
+            "activity_type": "hygiene",
             "loc": [[('T1', "toilet")], [('T2', "toilet")]],
             "noise": (6.5, 5)
         },
@@ -81,6 +82,7 @@ def newSyntheticRoutine():
             "etime": "09:00:00",
             "duration": 5400,
             "activity": "cookeat1",
+            "activity_type": "cookeat",
             "loc": [[('K', "kitchen"), ('L', "living")]],
             "noise": (15, 5)
         },
@@ -89,6 +91,7 @@ def newSyntheticRoutine():
             "etime": "12:00:00",
             "duration": 10800,
             "activity": "entertainment1",
+            "activity_type": "entertainment",
             "loc": [[('L', "living")]],
             "noise": (15, 8)
         },
@@ -97,6 +100,7 @@ def newSyntheticRoutine():
             "etime": "13:30:00",
             "duration": 5400,
             "activity": "cookeat2",
+            "activity_type": "cookeat",
             "loc": [[('K', "kitchen"), ('L', "living")]],
             "noise": (15, 8)
         },
@@ -105,6 +109,7 @@ def newSyntheticRoutine():
             "etime": "16:30:00",
             "duration": 10800,
             "activity": "sleeping2",
+            "activity_type": "sleep",
             "loc": [[('R1', "room")], [('R2', "room")], [('R3', "room")]],
             "noise": (3, 8)
         },
@@ -113,6 +118,7 @@ def newSyntheticRoutine():
             "etime": "17:00:00",
             "duration": 1800,
             "activity": "hygiene2",
+            "activity_type": "hygiene",
             "loc": [[('T1', "toilet")], [('T2', "toilet")]],
             "noise": (6.5, 5)
         },
@@ -121,6 +127,7 @@ def newSyntheticRoutine():
             "etime": "19:00:00",
             "duration": 7200,
             "activity": "outside",
+            "activity_type": "outside",
             "loc": [[('O', "out")]],
             "noise": (3, 8)
         },
@@ -129,6 +136,7 @@ def newSyntheticRoutine():
             "etime": "20:30:00",
             "duration": 5400,
             "activity": "cookeat3",
+            "activity_type": "cookeat",
             "loc": [[('K', "kitchen"), ('L', "living")]],
             "noise": (15, 5)
         },
@@ -137,6 +145,7 @@ def newSyntheticRoutine():
             "etime": "23:00:00",
             "duration": 9000,
             "activity": "entertainment2",
+            "activity_type": "entertainment",
             "loc": [[('L', "living")]],
             "noise": (15, 8)
         },
@@ -145,6 +154,7 @@ def newSyntheticRoutine():
             "etime": "23:59:59",
             "duration": 3599,
             "activity": "sleeping3",
+            "activity_type": "sleep",
             "loc": [[('R1', "room")], [('R2', "room")], [('R3', "room")]],
             "noise": (3, 8)
         },
@@ -187,7 +197,7 @@ class SyntheticData:
             #     while prev == room:
             #         room = random.choice(rooms)
 
-            sequence = sequence + [room]*d
+            sequence = sequence + [room] * d
             dur = dur + d
             prev = room
         return sequence
@@ -201,7 +211,7 @@ class SyntheticData:
             start_sec = prev_end_time + 1
 
             # STEP2: GET RANDOM DURATION for the ACTIVITY
-            duration = int(sample["duration"]/60)
+            duration = int(sample["duration"] / 60)
             if controlled:
                 sd = int(duration * sdp / 100.0)
             else:
@@ -263,18 +273,18 @@ class SyntheticData:
             noise_dur = 0
             while noise_dur == 0:
                 noise_dur = abs(int(random.gauss(avg_noise_dur, 2)))
-            if noise_dur >= len(sequence)/2:
+            if noise_dur >= len(sequence) / 2:
                 continue
 
             # generate noise start
-            startcell = random.randint(a=0, b=len(sequence)-noise_dur)
+            startcell = random.randint(a=0, b=len(sequence) - noise_dur)
 
             # gen loc instances
             num_loc = random.randint(a=1, b=noise_dur)
-            loc_ins = [1]*num_loc
+            loc_ins = [1] * num_loc
             while num_loc < noise_dur:
                 num_loc += 1
-                loc_ins[random.randint(a=0, b=len(loc_ins)-1)] += 1
+                loc_ins[random.randint(a=0, b=len(loc_ins) - 1)] += 1
 
             # select locations
             for n in loc_ins:
@@ -321,7 +331,7 @@ class SyntheticData:
             # STEP4.1: ADD NOISE
             if level == 2:
                 # noise_dur = abs(int(random.gauss(sample["noise"][1], 2)))
-                noise_inst = int(sample["noise"][0]*noise/100 + 1)
+                noise_inst = int(sample["noise"][0] * noise / 100 + 1)
                 noise_set = self.base_routine[-1]["loc"].copy()
                 for r in room_combination:
                     noise_set.remove(r)
@@ -358,6 +368,96 @@ class SyntheticData:
 
         return synt_routine
 
+    def genLevel3Sequence(self, day, controlled=False, sdp=10, prob=0.7):
+        # get a set/dict of activities
+        act_set = dict()
+        for act in self.base_routine[:-1]:
+            if act["activity_type"] not in act_set:
+                act_set[act["activity_type"]] = []
+            act_set[act["activity_type"]].append(act)
+
+        prev_act = None
+        is_full = False
+        synt_routine = []
+        prev_end_time = -1
+
+        for sample in self.base_routine[:-2]:
+            success = False
+            while not success and not is_full:
+                noise_set = act_set.copy()
+                del noise_set[sample["activity_type"]]
+                if prev_act is not None:
+                    del noise_set[prev_act]
+
+                # print(noise_set.keys())
+
+                if random.random() <= prob:
+                    act_type = sample["activity_type"]
+                    duration = int(sample["duration"] / 60)
+                    room_combination = random.choice(sample["loc"])
+                    activity = sample["activity"]
+                    success = True
+                else:
+                    # randomly choose an activity
+                    act_type = random.sample(noise_set.keys(), 1)[0]
+                    # print(act_type)
+                    activity_inst = random.choice(act_set[act_type])
+                    duration = int(activity_inst["duration"] / 60)
+                    room_combination = random.choice(activity_inst["loc"])
+                    activity = activity_inst["activity"]
+
+                start_sec = prev_end_time + 1
+
+                if controlled:
+                    sd = int(duration * sdp / 100.0)
+                else:
+                    # randomly select Standard Deviation
+                    sd_idx = random.randint(0, 2)  # 0->10%, 1->20%, 2->30%
+                    # calc standard deviation as a percent of duration
+                    sd = int(duration * self.sd[sd_idx] / 100.0)
+
+                rand_duration = abs(int(random.gauss(duration, sd)))
+                if rand_duration < 0:
+                    print(rand_duration)
+
+                # check if activity crosses 24 hrs
+                if start_sec + rand_duration > 24 * 60:
+                    rand_duration = 24 * 60 - start_sec
+                    is_full = True
+
+                # STEP4: GENERATE LOCATION SEQUENCE for the ACTIVITY
+                sequence = self.genLocSequence(rand_duration, room_combination)
+
+                d = 0
+                while d < rand_duration:
+                    time_min = minuteToString(start_sec + d)
+                    synt_routine.append([str(day).zfill(2), time_min, sequence[d][0],
+                                         sequence[d][1], activity])
+                    d += 1
+
+                prev_end_time = start_sec + rand_duration - 1
+                prev_act = act_type
+
+        # if day is still left, add the last routine activity
+        if prev_end_time + 1 < 24 * 60:
+            start_sec = prev_end_time + 1
+            rand_duration = 24 * 60 - start_sec
+
+            # STEP3: RANDOMLY SELECT LOCATION COMBINATION
+            room_combination = random.choice(self.base_routine[-2]["loc"])
+
+            # STEP4: GENERATE LOCATION SEQUENCE for the ACTIVITY
+            sequence = self.genLocSequence(rand_duration, room_combination)
+
+            d = 0
+            while d < rand_duration:
+                time_min = minuteToString(start_sec + d)
+                synt_routine.append([str(day).zfill(2), time_min, sequence[d][0],
+                                     sequence[d][1], self.base_routine[-2]["activity"]])
+                d += 1
+
+        return synt_routine
+
     def level_1(self, basepath, controlled=False, sdp=10):
         if controlled:
             print("[SyntheticData] Level_1: Generating level1 data for ", self.num_files, "files, ", self.num_days,
@@ -372,7 +472,7 @@ class SyntheticData:
             synt_routine = []
             for day in range(1, self.num_days + 1):
                 # one_day_routine = self.genLevel1(day, controlled, sdp)
-                one_day_routine = self.genBasicSequence(level=1, day = day,
+                one_day_routine = self.genBasicSequence(level=1, day=day,
                                                         controlled=controlled,
                                                         sdp=sdp)
                 synt_routine = synt_routine + one_day_routine
@@ -404,6 +504,31 @@ class SyntheticData:
             writeFile(basepath, filename, synt_routine)
             # print(len(synt_routine))
 
+    def level_3(self, basepath, controlled=False, sdp=10, prob=0.7):
+        if controlled:
+            print("[SyntheticData] Level_3: Generating level3 data for ", self.num_files, "files, ", self.num_days,
+                  " days and controlled SD of " + str(sdp) + "% in each file.")
+        else:
+            print("[SyntheticData] Level_3: Generating level3 data for ", self.num_files, "files, ", self.num_days,
+                  " days in each file.")
+
+        basepath = basepath + "/level3"
+
+        print("sd:", sdp, ", noise:", prob)
+
+        for f_num in range(1, self.num_files + 1):
+            synt_routine = []
+            for day in range(1, self.num_days + 1):
+                # one_day_routine = self.genLevel1(day, controlled, sdp)
+                one_day_routine = self.genLevel3Sequence(day=day,
+                                                         controlled=controlled,
+                                                         sdp=sdp, prob=prob)
+                synt_routine = synt_routine + one_day_routine
+            filename = "newsynt_level2_sd" + str(sdp) + "_prob" + str(prob) + "_" + str(f_num) + ".csv"
+            writeFile(basepath, filename, synt_routine)
+            # print(len(synt_routine))
+
+
 def temporaryFunction():
     f = open("../../data/real_data/Subject_2/xandem_2018-11-28_v2_location.log", 'r')
     prev_minute = "11/28/2018 0:0"
@@ -429,11 +554,17 @@ if __name__ == "__main__":
     #     obj.level_1("../../data/synthetic_data/new_synthetic_data", True, sd)
 
     # LEVEL2
+    # for sd in [5, 10, 15, 20, 25, 30]:
+    #     for noise in [20, 30, 40]:
+    #         obj.level_2("../../data/synthetic_data/new_synthetic_data", True, sd, noise)
+
+    # LEVEL3
     for sd in [5, 10, 15, 20, 25, 30]:
-        for noise in [20, 30, 40]:
-            obj.level_2("../../data/synthetic_data/new_synthetic_data", True, sd, noise)
+        for prob in [0.3, 0.5, 0.7, 0.9]:
+            obj.level_3("../../data/synthetic_data/new_synthetic_data", True, sd, prob)
+
 
     # temporaryFunction()
-    # seq = obj.genBasicSequence(2, 1, controlled=True, sdp=5, noise=20)
+    # seq = obj.genLevel3Sequence(1, controlled=True, sdp=5, prob=0.9)
     # for s in seq:
     #     print(s)
