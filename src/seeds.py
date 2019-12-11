@@ -235,7 +235,7 @@ class SEEDS:
         for w in range(self.width):
             self.labels[self.top_level][w] = self.parents[level][self.labels[level][w]]
 
-    def update_blocks(self, level, req_confidence=0.45):
+    def update_blocks(self, level, req_confidence=0.3):
 
         for label in range(self.nr_labels[level] - 1):
             # parent of this label and next label

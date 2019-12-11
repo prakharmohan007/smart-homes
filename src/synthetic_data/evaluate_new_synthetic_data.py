@@ -267,7 +267,7 @@ def main():
     sdp = [5, 10, 15, 20, 25, 30]
     num_noise = [20]
     all_probs = [0.3, 0.5, 0.7, 0.9]
-    probs = [0.9]
+    probs = [0.7]
 
     if level == 1:
         base_addr = "../../data/synthetic_data/new_synthetic_data/level1/"
@@ -321,7 +321,7 @@ def main():
             print(seeds_iou_sd)
             seed_iou_prob.append(seeds_iou_sd)
 
-        for prob, ious in zip(probs, seed_iou_noise):
+        for prob, ious in zip(probs, seed_iou_prob):
             print(prob)
             print(ious)
 
