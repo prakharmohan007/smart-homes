@@ -43,8 +43,8 @@ class SEEDS:
         elif width == 1440:
             # 8 minute superpixel -> superpixel width = 8
             # 2, 4, 8
-            self.seed_width = 2
-            self.nr_levels = 4
+            self.seed_width = 20
+            self.nr_levels = 3
             self.nr_superpixels = 1440 / 8  # 180
         elif width == 17280:
             # 8 minute superpixel -> superpixel width = 96
@@ -235,7 +235,7 @@ class SEEDS:
         for w in range(self.width):
             self.labels[self.top_level][w] = self.parents[level][self.labels[level][w]]
 
-    def update_blocks(self, level, req_confidence=0.0):
+    def update_blocks(self, level, req_confidence=0.3):
 
         for label in range(self.nr_labels[level] - 1):
             # parent of this label and next label
@@ -303,6 +303,25 @@ class SEEDS:
                     updated[w] = True
                     w -= 2
                 elif self.probability(self.bin_index[w + 1], label2, label1) and updated[w + 1] is None:
+                    self.update_element(self.top_level, label1, w + 1)
+                    updated[w + 1] = True
+            w += 1
+
+    def update_pixel2(self):
+        updated = [None] * self.width
+        w = 0
+        while w < self.width - 1:
+            label1 = self.labels[self.top_level][w]
+            label2 = self.labels[self.top_level][w + 1]
+
+            if label1 != label2:
+                if self.nr_partitions[self.top_level][label1] > self.seed_width and self.probability(
+                        self.bin_index[w], label1, label2) and updated[w] is None:
+                    self.update_element(self.top_level, label2, w)
+                    updated[w] = True
+                    w -= 2
+                elif self.nr_partitions[self.top_level][label2] > self.seed_width and self.probability(
+                        self.bin_index[w + 1], label2, label1) and updated[w + 1] is None:
                     self.update_element(self.top_level, label1, w + 1)
                     updated[w + 1] = True
             w += 1

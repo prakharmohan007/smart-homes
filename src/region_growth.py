@@ -28,6 +28,24 @@ class RegionGrowth:
         ent_a = self.entropy(hist1 + hist2)
         return ent_b - ent_a
 
+
+    @staticmethod
+    def intersection(hist1, hist2):
+        sum1 = 0
+        sum2 = 0
+
+        count1 = sum(hist1)  # self.block_size[level1][label1]
+        count2 = sum(hist2)  # self.block_size[level2][label2]
+
+        for b in range(len(hist1)):
+            if hist1[b] * count1 < hist2[b] * count2:
+                sum1 += hist1[b]
+            else:
+                sum2 += hist2[b]
+
+        return sum1 / count1 + sum2 / count2
+
+
     @staticmethod
     def hist_inter_union(hist1, hist2):
         intersection = np.logical_and(hist1, hist2)
@@ -112,7 +130,9 @@ class RegionGrowth:
 
         for i in range(1, len(cluster_feat)):
             # if entropy +ive, merge else don't merge
-            if self.entropy_gain(cluster_feat[i]["loc_array"], cluster_new_hist[cluster_old_new[i-1]]) >= 0:
+            # if self.entropy_gain(cluster_feat[i]["loc_array"], cluster_new_hist[cluster_old_new[i-1]]) >= 0:
+            # if self.hist_cosine_similarity(cluster_feat[i]["loc_array"], cluster_new_hist[cluster_old_new[i - 1]]) >= 0.9:
+            if self.intersection(cluster_feat[i]["loc_array"], cluster_new_hist[cluster_old_new[i - 1]]) >= 0.9:
                 cluster_old_new[i] = cluster_old_new[i-1]
                 cluster_new_old[cluster_old_new[i]].append(i)
                 cluster_new_hist[cluster_old_new[i]] = cluster_new_hist[cluster_old_new[i]] + cluster_feat[i]["loc_array"]
