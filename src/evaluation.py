@@ -9,9 +9,9 @@ from region_growth import RegionGrowth
 from data_visualization import DataVisualization as dv
 from seeds import SEEDS
 
-SAVE_IMAGE = 0
-SHOW_IMAGE = 0
-VISUALIZE = 0
+SAVE_IMAGE = 1
+SHOW_IMAGE = 1
+VISUALIZE = 1
 
 
 def median_filtering(list1d, window_size=12):
@@ -217,6 +217,7 @@ def total_MAE(cluster_feat, cluster_elements):
 
 
 def clustering(lvl, f_name):
+
     filepath = "../data/synthetic_data/level" + str(lvl) + "/parsed_data/" + f_name + ".csv"
     i_name = f_name + ".png"
     scale = 30
@@ -297,6 +298,13 @@ def clustering(lvl, f_name):
         # obj_dv = dv(img_sp, label_sp)
         # obj_dv.feature_comparison(clusters_feat)
 
+    num_pairs = 0
+    for c in clusters_feat:
+        # print(clusters_feat[c]['num_clusters'])
+        if clusters_feat[c]['num_clusters'] > 1:
+            num_pairs += clusters_feat[c]['num_clusters']
+    print(num_pairs)
+
     print("preparing visual results for clusters.....")
     img_sp, label_sp = plot_cluster(cluster_pixels, dims)
     if SHOW_IMAGE:
@@ -314,7 +322,7 @@ def clustering(lvl, f_name):
     variance = total_RMSE(init_cluster_feat, cluster_coarse)
     mae = total_MAE(init_cluster_feat, cluster_coarse)
 
-    return len(cluster_pixels), variance, mae
+    return len(cluster_pixels), variance, mae, num_pairs
 
 
 def evaluate_synthetic_data():
@@ -328,9 +336,9 @@ def evaluate_synthetic_data():
     print("prepare data")
 
     lvl = 3
-    noise = ""
+    noise = 10
     prob = [0.3, 0.5, 0.7, 0.9]
-    sd = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+    sd = [5, 10, 15, 20, 25, 30]  # , 35, 40, 45, 50]
     filenum = 5
 
     cluster_plot = []
@@ -344,18 +352,26 @@ def evaluate_synthetic_data():
             avg_num_clusters = 0
             avg_var = 0
             avg_mae = 0
+            avg_num_pairs = 0
             for f_num in range(1, filenum + 1):
-
-                if p is None:
-                    f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + noise + str(f_num)
+                if lvl == 1:
+                    f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + str(f_num)
+                elif lvl == 2:
+                    f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_noise" + str(noise) + "_" + str(f_num)
                 else:
                     f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(f_num)
 
+                print("######################################################")
+                print("######################################################")
                 print(f_name)
-                res, var, mae = clustering(lvl, f_name)
+                res, var, mae, num_pairs = clustering(lvl, f_name)
+                avg_num_pairs += num_pairs
                 avg_num_clusters += res
                 avg_var += var
                 avg_mae += mae
+
+            avg_num_pairs = avg_num_pairs/filenum
+            print("average number of pairs for level", lvl, ", prob: ", p, ", SD:", d, " is ", avg_num_pairs)
 
             num_clusters.append(int(avg_num_clusters / filenum))
             rmse_sd.append(avg_var / (filenum * 1000))
@@ -400,7 +416,7 @@ def evaluate_real_data():
     RMSE = []
     x_axis = []
 
-    for subject_id in range(1, 3):
+    for subject_id in range(2, 5):
 
         sub_num_clus = []
         sub_mse = []
@@ -570,6 +586,10 @@ def evaluate_real_data():
     plt.plot(x_axis[0], num_clusters[0], 'b', marker='o')
     plt.plot(x_axis[1], num_clusters[1], 'r', label="subject2")
     plt.plot(x_axis[1], num_clusters[1], 'r', marker='o')
+    plt.plot(x_axis[2], num_clusters[2], 'g', label="subject3")
+    plt.plot(x_axis[2], num_clusters[2], 'g', marker='o')
+    plt.plot(x_axis[3], num_clusters[3], 'k', label="subject4")
+    plt.plot(x_axis[3], num_clusters[3], 'k', marker='o')
 
     plt.xlabel("Day", fontsize=25)
     plt.ylabel("Number of Clusters", fontsize=25)
@@ -584,6 +604,10 @@ def evaluate_real_data():
     plt.plot(x_axis[0], MAE[0], 'b', marker='o')
     plt.plot(x_axis[1], MAE[1], 'r', label="subject2")
     plt.plot(x_axis[1], MAE[1], 'r', marker='o')
+    plt.plot(x_axis[2], MAE[2], 'g', label="subject3")
+    plt.plot(x_axis[2], MAE[2], 'g', marker='o')
+    plt.plot(x_axis[3], MAE[3], 'k', label="subject4")
+    plt.plot(x_axis[3], MAE[3], 'k', marker='o')
 
     plt.xlabel("Day", fontsize=25)
     plt.ylabel("MAE (scale=100)", fontsize=25)
@@ -598,6 +622,10 @@ def evaluate_real_data():
     plt.plot(x_axis[0], RMSE[0], 'b', marker='o')
     plt.plot(x_axis[1], RMSE[1], 'r', label="subject2")
     plt.plot(x_axis[1], RMSE[1], 'r', marker='o')
+    plt.plot(x_axis[2], RMSE[2], 'g', label="subject3")
+    plt.plot(x_axis[2], RMSE[2], 'g', marker='o')
+    plt.plot(x_axis[3], RMSE[3], 'k', label="subject4")
+    plt.plot(x_axis[3], RMSE[3], 'k', marker='o')
 
     plt.xlabel("Day", fontsize=25)
     plt.ylabel("RMSE (scale=1000)", fontsize=25)
@@ -611,3 +639,4 @@ def evaluate_real_data():
 if __name__ == "__main__":
     evaluate_real_data()
     # evaluate_synthetic_data()
+    # clustering(lvl=3, f_name="synt_data_lvl3_days30_sd30_prob0.9_5")

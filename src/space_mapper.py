@@ -19,10 +19,10 @@ class SpaceMapper:
         self.house_center = (0, 0)
         self.house_map = np.array([])
         print("[SpaceMapper] init: start parsing XML file.....")
-        if subject_id==2:
-            self.parseHouseMap2()
-        elif subject_id == 1:
-            self.parseHouseMap1()
+        # if subject_id==2:
+        #     self.parseHouseMap2()
+        # elif subject_id == 1:
+        self.parseHouseMap1()
         print("[SpaceMapper] init: Mapping complete!")
 
     def parseHouseMap1(self):

@@ -30,9 +30,12 @@ class SEEDS:
         self.min_nr_sublabels = 0
 
     def initialize(self, width, scale, num_locs):
-        if 24 * 60 * 60 / scale != width:
-            print("[SEEDS] init: scale and width are inconsistent")
-            raise
+        # if 24 * 60 * 60 / scale != width:
+        #     print("[SEEDS] init: scale and width are inconsistent")
+        #     raise
+
+        self.seed_width = 2
+        self.nr_levels = 2
 
         if width == 2880:
             # 8 minute superpixel -> superpixel width = 16
@@ -235,7 +238,7 @@ class SEEDS:
         for w in range(self.width):
             self.labels[self.top_level][w] = self.parents[level][self.labels[level][w]]
 
-    def update_blocks(self, level, req_confidence=0.3):
+    def update_blocks(self, level, req_confidence=0.4):
 
         for label in range(self.nr_labels[level] - 1):
             # parent of this label and next label
@@ -391,7 +394,7 @@ class SEEDS:
 
 if __name__ == '__main__':
     seedsobj = SEEDS()
-    seedsobj.initialize(17280, 5, 7)
+    seedsobj.initialize(28, 5, 5)
     seedsobj.assign_labels()
 
     # generate a routine thing
@@ -400,14 +403,16 @@ if __name__ == '__main__':
     # routine[1152:1728] = np.random.randint(3, size=576)
     # routine[1728:2304] = np.random.randint(4, size=576)
     # routine[2304:2880] = np.random.randint(5, size=576)
-    routine = np.zeros(17280, dtype=int)
-    routine[2160:4320] = np.random.randint(2, size=2160)
-    routine[4320:6480] = np.random.randint(4, size=2160)
-    routine[6480:8640] = np.random.randint(2, size=2160)
-    routine[8640:10800] = np.random.randint(1, 4, size=2160)
-    routine[10800:12960] = np.random.randint(4, 6, size=2160)
-    routine[12960:15120] = np.array(random.choices([3, 5], k=2160))
-    routine[15120:] = np.random.randint(4, 7, size=2160)
+    # routine = np.zeros(17280, dtype=int)
+    # routine[2160:4320] = np.random.randint(2, size=2160)
+    # routine[4320:6480] = np.random.randint(4, size=2160)
+    # routine[6480:8640] = np.random.randint(2, size=2160)
+    # routine[8640:10800] = np.random.randint(1, 4, size=2160)
+    # routine[10800:12960] = np.random.randint(4, 6, size=2160)
+    # routine[12960:15120] = np.array(random.choices([3, 5], k=2160))
+    # routine[15120:] = np.random.randint(4, 7, size=2160)
+
+    routine = [0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 4, 3, 3, 2, 2, 2, 2]
 
     # routine[576:1152] = np.ones(576)
     # routine[1152:1728] = np.array([2]*576)

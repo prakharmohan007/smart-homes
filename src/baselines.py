@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 import glob
 import re
 
-IMSAVE = 1
+IMSAVE = 0
 IMSHOW = 1
 
 
@@ -128,7 +128,7 @@ class PoincarePlot:
             for act1 in time_table[day]:
                 for act2 in time_table[day+1]:
                     if act1["act"] == act2["act"] and act2["ispaired"] is False:
-                        if act1["act"] == 'nonroutine' and abs(act1["time"] - act2["time"]) > 180:
+                        if act1["act"] == 'nonroutine' and abs(act1["time"] - act2["time"]) > 120:
                             continue
                         x.append(act1["time"])
                         y.append(act2["time"])
@@ -169,7 +169,7 @@ class PoincarePlot:
         return converted_table
 
     # Get level3 table of activities
-    def getPointsLevel3(self, file_path):
+    def getPointsLevel3_orig(self, file_path):
         time_table = self.getActivityTableLevel3(file_path)
         x = []
         y = []
@@ -184,7 +184,7 @@ class PoincarePlot:
                     act2 = d2[idx2]
                     if act1["act"] == act2["act"] and abs(act1["time"] - act2["time"]) < act1["diff"] and \
                             abs(act1["time"] - act2["time"]) < act2["diff"] and \
-                            abs(act1["time"] - act2["time"]) < 660 and \
+                            abs(act1["time"] - act2["time"]) < 220 and \
                             abs(act1["dur"] - act2["dur"]) < min(act1["dur"], act2["dur"]):
                         act1["diff"] = abs(act1["dur"] - act2["dur"])
                         act2["diff"] = abs(act1["dur"] - act2["dur"])
@@ -202,6 +202,32 @@ class PoincarePlot:
                 except IndexError as err:
                     # print(idx1, idx2)
                     pass
+
+        return x, y, points
+
+    # Get level3 table of activities
+    def getPointsLevel3(self, file_path):
+        time_table = self.getActivityTableLevel3(file_path)
+        x = []
+        y = []
+        points = []
+
+        for day in range(len(time_table) - 1):
+            d1 = time_table[day].copy()
+            d2 = time_table[day + 1].copy()
+            for idx1 in range(len(d1)):
+                act1 = d1[idx1]
+                for idx2 in range(len(d2)):
+                    act2 = d2[idx2]
+                    if act1["act"] == act2["act"] and abs(act1["time"] - act2["time"]) < 120 and \
+                            abs(act1["dur"] - act2["dur"]) < min(act1["dur"], act2["dur"]) and \
+                            act2["key"] == -1:
+                        # print(day, act1, act2)
+                        x.append(d1[idx1]["time"])
+                        y.append(d2[idx2]["time"])
+                        points.append((d1[idx1]["time"], d2[idx2]["time"]))
+                        d2[idx2]["key"] = idx1
+                        break
 
         return x, y, points
 
@@ -343,7 +369,8 @@ class PoincarePlot:
 
     def plotGraphs3(self, x_axis, center, long_axis, short_axis, prob_labels):
 
-        cmap = plt.cm.get_cmap("hsv", len(prob_labels))
+        # cmap = plt.cm.get_cmap("hsv", len(prob_labels))
+        cmap = ['r', 'g', 'b', 'k']
         fig, axs = plt.subplots(3, 1, sharex='none', sharey='none')
         for i in range(len(prob_labels)):
             center_x = []
@@ -355,14 +382,14 @@ class PoincarePlot:
 
             plt.rc('xtick', labelsize=15)
             plt.rc('ytick', labelsize=15)
-            axs[0].plot(x_axis, short_axis[i], c=cmap(i), label=str(prob_labels[i]))
-            axs[0].plot(x_axis, short_axis[i], c=cmap(i), marker='o')
+            axs[0].plot(x_axis, short_axis[i], c=cmap[i], label=str(prob_labels[i]))
+            axs[0].plot(x_axis, short_axis[i], c=cmap[i], marker='o')
             axs[0].set_xlabel("standard deviation", fontsize=15)
             axs[0].set_ylabel("Short Axis Length", fontsize=15)
             # axs[0].set_title("Short Axis Length for Synthetic Data")
 
-            axs[1].plot(x_axis, long_axis[i], c=cmap(i), label=str(prob_labels[i]))
-            axs[1].plot(x_axis, long_axis[i], c=cmap(i), marker='o')
+            axs[1].plot(x_axis, long_axis[i], c=cmap[i], label=str(prob_labels[i]))
+            axs[1].plot(x_axis, long_axis[i], c=cmap[i], marker='o')
             axs[1].set_xlabel("standard deviation", fontsize=15)
             axs[1].set_ylabel("Long Axis Length", fontsize=15)
             # axs[1].set_title("Long Axis Length for Synthetic Data")
@@ -381,18 +408,18 @@ class PoincarePlot:
             plt.show()
 
     def main(self):
-        lvl = 3
-        noise = [5, 10, 15, 20]
+        lvl = 2
+        noise = [10]
         prob = [0.3, 0.5, 0.7, 0.9]
-        sd = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+        sd = [5, 10, 15, 20, 25, 30]  # , 35, 40, 45, 50]
         filenum = 5
 
         short_axis_all = []
         long_axis_all = []
         center_all = []
 
-        n = 0  # for n in noise:
-        for p in prob:
+        for p in noise:
+        # for p in prob:
             short_axis = []
             long_axis = []
             center = []
@@ -405,13 +432,13 @@ class PoincarePlot:
                     if lvl == 1:
                         f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + str(f_num)
                     elif lvl == 2:
-                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_noise" + str(n) + "_" + str(f_num)
+                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_noise" + str(p) + "_" + str(f_num)
                     else:
                         f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(
                             f_num)
 
                     filepath = "../data/synthetic_data/level" + str(lvl) + "/parsed_data/" + f_name + ".csv"
-                    print(filepath)
+                    # print(filepath)
 
                     if lvl == 1:
                         x, y, pp = self.getPointsLevel1(filepath)
@@ -424,6 +451,8 @@ class PoincarePlot:
                     point_y = point_y + y
                     points = points + pp
 
+                avg_num_pairs = len(points)/filenum
+                print("average number of pairs for level", lvl, ", prob: ", p, ", SD:", d, " is ", avg_num_pairs)
                 points = np.array(points)
                 str_prob = "_prob"+str(p)
                 c, sa, la = self.plotPoincarePlot(point_x, point_y, points, lvl, d, self.results_path, str_prob)
@@ -436,10 +465,10 @@ class PoincarePlot:
             short_axis_all.append(short_axis)
             long_axis_all.append(long_axis)
 
-        if lvl != 3:
-            self.plotGraphs(sd, center_all[0], long_axis_all[0], short_axis_all[0], lvl)
-        else:
-            self.plotGraphs3(sd, center_all, long_axis_all, short_axis_all, prob)
+        # if lvl != 3:
+        #     self.plotGraphs(sd, center_all[0], long_axis_all[0], short_axis_all[0], lvl)
+        # else:
+        #     self.plotGraphs3(sd, center_all, long_axis_all, short_axis_all, prob)
 
 
 class SequenceMatching:
@@ -458,23 +487,27 @@ class SequenceMatching:
 
         sequence = []
         prev_day = 0
+        cell = 0
         for line in lines:
             split_line = line.splitlines()[0].split(sep=',')
+            # print(split_line)
             if prev_day != int(split_line[0]):
                 dummy = [None]*1440
-                sequence.append([dummy])
+                sequence.append(dummy)
                 prev_day = int(split_line[0])
-            stime = getMinuteFromTime(split_line[1])
-            duration = int(int(split_line[2])/60)
-            endtime = stime + duration+1
-            sequence[-1][stime:endtime] = [split_line[-1]] * duration
+                cell = 0
+            # stime = getMinuteFromTime(split_line[1])
+            # duration = int(int(split_line[2])/60)
+            # endtime = stime + duration+1
+            sequence[-1][cell] = split_line[2]
+            cell += 1
 
         for r in range(len(sequence)):
             for c in range(len(sequence[r])):
                 if sequence[r][c] is None:
                     print("None")
                     sequence[r][c] = sequence[r][c-1]
-            print(sequence[r])
+            # print(sequence[r])
 
         return sequence
 
@@ -510,27 +543,32 @@ class SequenceMatching:
         return avg/(len(sequence) - 1), avg_points, quick_avg/(len(sequence) - 1), q_avg_points
 
     def plotGraphs3(self, x_axis, ratio, q_ratio, labels, x_label="Standard Deviation"):
-        # cmap = plt.cm.get_cmap("hsv", len(prob_labels))
-        cmap = plt.cm.jet(np.linspace(0, 1, len(labels)))
-        fig, axs = plt.subplots(2, 1, sharex='none', sharey='none')
+        # cmap = plt.cm.get_cmap("hsv", len(pr.set_xlabel(x_label, fontsize=15)ob_labels))
+        # cmap = plt.cm.jet(np.linspace(0, 1, len(labels)))
+        cmap = ['b', 'g', 'r', 'k']
+        # fig, axs = plt.subplots(1, 1, sharex='none', sharey='none')
         for i in range(len(labels)):
 
             plt.rc('xtick', labelsize=15)
             plt.rc('ytick', labelsize=15)
-            axs[0].plot(x_axis, ratio[i], c=cmap[i], label=str(labels[i]))
-            axs[0].plot(x_axis, ratio[i], c=cmap[i], marker='o')
-            axs[0].set_xlabel(x_label, fontsize=15)
-            axs[0].set_ylabel("Similarity Ratio", fontsize=15)
+            plt.plot(x_axis, ratio[i], c=cmap[i], label=str(labels[i]))
+            plt.plot(x_axis, ratio[i], c=cmap[i], marker='o')
+            plt.xlabel(x_label, fontsize=15)
+            plt.ylabel("Similarity Ratio", fontsize=15)
+            # axs[0].plot(x_axis, ratio[i], c=cmap[i], label=str(labels[i]))
+            # axs[0].plot(x_axis, ratio[i], c=cmap[i], marker='o')
+            # axs[0].set_xlabel(x_label, fontsize=15)
+            # axs[0].set_ylabel("Similarity Ratio", fontsize=15)
             # axs[0].set_title("Short Axis Length for Synthetic Data")
 
-            axs[1].plot(x_axis, q_ratio[i], c=cmap[i], label=str(labels[i]))
-            axs[1].plot(x_axis, q_ratio[i], c=cmap[i], marker='o')
-            axs[1].set_xlabel(x_label, fontsize=15)
-            axs[1].set_ylabel("Similarity Q-Ratio", fontsize=15)
+            # axs[1].plot(x_axis, q_ratio[i], c=cmap[i], label=str(labels[i]))
+            # axs[1].plot(x_axis, q_ratio[i], c=cmap[i], marker='o')
+            # axs[1].set_xlabel(x_label, fontsize=15)
+            # axs[1].set_ylabel("Similarity Q-Ratio", fontsize=15)
             # axs[1].set_title("Long Axis Length for Synthetic Data")
 
-        axs[0].legend(prop={'size': 15}, loc="upper right")
-        axs[1].legend(prop={'size': 15}, loc="upper right")
+        plt.legend(prop={'size': 15}, loc="upper right")
+        # axs[1].legend(prop={'size': 15}, loc="upper right")
         if IMSAVE:
             # plt.savefig(self.results_path + "PoincareRes_Level"+str(level)+".png")
             pass
@@ -540,20 +578,24 @@ class SequenceMatching:
     def plotGraphs(self, x_axis, ratio, ratio_points, quick_ratio, q_ratio_points, level):
         plt.rc('xtick', labelsize=15)
         plt.rc('ytick', labelsize=15)
-        fig, axs = plt.subplots(2, 1, sharex='none', sharey='none')
-        axs[0].plot(x_axis, ratio, 'k')
-        axs[0].plot(x_axis, ratio, 'k', marker='o')
-        for i in range(len(x_axis)):
-            axs[0].scatter([x_axis[i]]*len(ratio_points[i]), ratio_points[i], color='black', s=5, marker='x')
-        axs[0].set_xlabel("standard deviation", fontsize=15)
-        axs[0].set_ylabel("Similarity Ratio", fontsize=15)
+        # fig, axs = plt.subplots(2, 1, sharex='none', sharey='none')
+        # axs[0].plot(x_axis, ratio, 'k')
+        # axs[0].plot(x_axis, ratio, 'k', marker='o')
+        plt.plot(x_axis, ratio, 'k')
+        plt.plot(x_axis, ratio, 'k', marker='o')
+        # for i in range(len(x_axis)):
+        #     axs[0].scatter([x_axis[i]]*len(ratio_points[i]), ratio_points[i], color='black', s=5, marker='x')
+        # axs[0].set_xlabel("standard deviation", fontsize=15)
+        # axs[0].set_ylabel("Similarity Ratio", fontsize=15)
+        plt.xlabel("standard deviation", fontsize=15)
+        plt.ylabel("Similarity Ratio", fontsize=15)
         # axs[0].set_title("Short Axis Length for Synthetic Data")
-        axs[1].plot(x_axis, quick_ratio, 'k')
-        axs[1].plot(x_axis, quick_ratio, 'k', marker='o')
-        for i in range(len(x_axis)):
-            axs[1].scatter([x_axis[i]]*len(q_ratio_points[i]), q_ratio_points[i], color='black', s=5, marker='x')
-        axs[1].set_xlabel("standard deviation", fontsize=15)
-        axs[1].set_ylabel("Similarity Q-Ratio", fontsize=15)
+        # axs[1].plot(x_axis, quick_ratio, 'k')
+        # axs[1].plot(x_axis, quick_ratio, 'k', marker='o')
+        # for i in range(len(x_axis)):
+        #     axs[1].scatter([x_axis[i]]*len(q_ratio_points[i]), q_ratio_points[i], color='black', s=5, marker='x')
+        # axs[1].set_xlabel("standard deviation", fontsize=15)
+        # axs[1].set_ylabel("Similarity Q-Ratio", fontsize=15)
 
         if IMSAVE:
             # plt.savefig(self.results_path + "PoincareRes_Level"+str(level)+".png")
@@ -562,10 +604,10 @@ class SequenceMatching:
             plt.show()
 
     def synthetic(self):
-        lvl = 3
-        noise = [0]  # [5, 10, 15, 20]
-        prob = [0.3, 0.5, 0.7, 0.9]
-        sd = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+        lvl = 1
+        noise = [20, 30, 40]  # [5, 10, 15, 20]
+        prob = [0.3] #, 0.5, 0.7, 0.9]
+        sd = [5, 10, 15, 20, 25, 30]
         filenum = 5
 
         ratio_all = []
@@ -589,15 +631,16 @@ class SequenceMatching:
 
                 for f_num in range(1, filenum + 1):
                     if lvl == 1:
-                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_" + str(f_num)
+                        f_name = "newsynt_level" + str(lvl) + "_sd" + str(d) + "_" + str(f_num)
                     elif lvl == 2:
-                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_noise" + str(n) + "_" + str(
+                        f_name = "newsynt_level" + str(lvl) + "_sd" + str(d) + "_noise" + str(n) + "_" + str(
                             f_num)
                     else:
-                        f_name = "synt_data_lvl" + str(lvl) + "_days30_sd" + str(d) + "_prob" + str(p) + "_" + str(
+                        f_name = "newsynt_level" + str(lvl) + "_sd" + str(d) + "_prob" + str(p) + "_" + str(
                             f_num)
 
-                    filepath = "../data/synthetic_data/level" + str(lvl) + "/parsed_data/" + f_name + ".csv"
+                    # filepath = "../data/synthetic_data/level" + str(lvl) + "/parsed_data/" + f_name + ".csv"
+                    filepath = "../data/synthetic_data/new_synthetic_data/level" + str(lvl) + "/" + f_name + ".csv"
                     print(filepath)
 
                     sequence = self.getSyntheticSequence(filepath)
@@ -737,9 +780,10 @@ class SequenceMatching:
 
 
 if __name__ == '__main__':
-    # ppobj = PoincarePlot()
-    # ppobj.main()
+    ppobj = PoincarePlot()
+    ppobj.main()
     # ppobj.plotPairs()
-    # ppobj.getActivityTableLevel3("../data/synthetic_data/level3/parsed_data/synt_data_lvl3_days30_sd5_prob0.7_4.csv")
-    smobj = SequenceMatching()
-    smobj.synthetic()
+    # ppobj.getActivityTableLevel3("../data/synthetic_data/level3/parsed_data/synt_data_lvl3_days30_sd5_prob0.9_9.csv")
+    # ppobj.getPointsLevel3("../data/synthetic_data/level3/parsed_data/synt_data_lvl3_days30_sd5_prob0.3_6.csv")
+    # smobj = SequenceMatching()
+    # smobj.synthetic()

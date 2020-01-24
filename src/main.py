@@ -473,7 +473,7 @@ def real_data_complete():
     scale = 60
     scale_down = 60
 
-    for subject_id in range(1, 3):
+    for subject_id in range(1, 5):
         target_dir = "../data/real_data/clustered_images/"
         source_dir = "../data/real_data/Subject_" + str(subject_id)
         obj_data = ReadData(subject_id=subject_id,
